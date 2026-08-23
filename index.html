@@ -1916,6 +1916,9 @@ body.ios .pnotif .pn-ic{border-radius:11px}
 
     <div class="field"><label>Prix de vente (€) *</label><input id="sell-price" type="number" step="0.01" min="0" placeholder="Ex: 45.00"/></div>
     <div class="field"><label>WhatsApp / Contact</label><input id="sell-contact" placeholder="+223 …"/></div>
+    <div class="field"><label>🟠 Numéro Orange Money (paiement)</label><input id="sell-om" type="tel" inputmode="numeric" placeholder="Ex: 82131418" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
+    <div class="field"><label>🌊 Numéro Wave (paiement)</label><input id="sell-wave" type="tel" inputmode="numeric" placeholder="Ex: 70000000" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
+    <div style="font-size:11px;color:var(--text3);margin:-4px 0 10px;line-height:1.5">💡 Ces numéros permettent aux acheteurs de vous payer directement. Vous confirmez ensuite le paiement dans votre tableau de bord vendeur.</div>
 
     <div class="field toggle-field">
       <label class="toggle-row">
@@ -1942,7 +1945,7 @@ body.ios .pnotif .pn-ic{border-radius:11px}
 <div class="screen" id="screen-vpn">
   <div class="screen-head">
     <div class="back-btn" onclick="goBack()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></div>
-    <div class="screen-title">🔐 Boutique VPN</div>
+    <div class="screen-title">🔐 VPN</div>
   </div>
   <div class="screen-body">
     <p class="sub" style="margin:0 0 14px">Fichiers WireGuard prêts à l'emploi. Achetez, puis téléchargez votre fichier <b>.conf</b> à importer dans l'app WireGuard.</p>
@@ -2264,6 +2267,14 @@ body.ios .pnotif .pn-ic{border-radius:11px}
       <div class="set-ico"><svg viewBox="0 0 24 24"><path d="M4 2h12l4 4v16H4z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg></div>
       <div class="set-txt"><div class="set-name">Historique Paiements</div><div class="set-desc">Toutes vos commandes et recharges</div></div><span style="color:var(--text3)">›</span>
     </div>
+
+    <!-- ═══ MES ACHATS (VPN + comptes) ═══ -->
+    <div class="settings-group-label" style="margin:20px 0 6px">🛍️ Mes achats</div>
+    <div id="pf-purchases"><p style="margin:0;font-size:12px;color:var(--text3)">Chargement…</p></div>
+
+    <!-- ═══ TABLEAU DE BORD VENDEUR ═══ -->
+    <div class="settings-group-label" style="margin:20px 0 6px">📊 Tableau de bord vendeur</div>
+    <div id="pf-seller"><p style="margin:0;font-size:12px;color:var(--text3)">Chargement…</p></div>
     <div class="set-row" onclick="openScreen('settings')">
       <div class="set-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.6.66 1.03 1.51 1H21a2 2 0 1 1 0 4h-.09c-.85 0-1.37.43-1.51 1z"/></svg></div>
       <div class="set-txt"><div class="set-name">Paramètres</div><div class="set-desc">Langue, thème, devise, notifications</div></div><span style="color:var(--text3)">›</span>
@@ -3846,6 +3857,7 @@ function refreshProfileUI(){
 function openProfile(){
   if(!currentUser){openAuthModal();showToast('🔐 Connectez-vous');return;}
   refreshProfileUI();
+  try{loadMyVpn();loadMyAccounts();loadMyListings();renderProfilePurchases();renderSellerDash();}catch(e){}   // 🛍️ Mes achats + 📊 dashboard vendeur
   openScreen('profile');
   setTimeout(refreshProfileUI,200);   // après le passage de reLang()
 }
@@ -5253,8 +5265,8 @@ function authErrorMsg(code){
 auth.onAuthStateChanged(user=>{
   updateAuthUI(user);
   _flushAuthWaiters();   // ✅ l'état de connexion est maintenant connu → routage notif sûr
-  if(user){watchAccountStatus(user.uid);loadUserNotifs(user.uid);watchMyDeliveries(user.uid);if(pushEnabled())initFCM();retryPendingReferral(user.uid);}
-  else{const bo=document.getElementById('blocked-overlay');if(bo)bo.classList.remove('open');if(_statusUnsub){_statusUnsub();_statusUnsub=null;}stopUserNotifs();stopMyDeliveries();}
+  if(user){watchAccountStatus(user.uid);loadUserNotifs(user.uid);watchMyDeliveries(user.uid);loadMpOrders();if(pushEnabled())initFCM();retryPendingReferral(user.uid);}
+  else{const bo=document.getElementById('blocked-overlay');if(bo)bo.classList.remove('open');if(_statusUnsub){_statusUnsub();_statusUnsub=null;}stopUserNotifs();stopMyDeliveries();stopMyAccounts();stopMyListings();stopMpOrders();}
 });
 
 // Surveille le statut du compte (active / suspended / blocked) défini par l'admin
@@ -5880,6 +5892,7 @@ function renderMarketplace(){
       </div></div>`;
   }).join('');
 }
+var _viewedAcc={};
 function openAccount(id){
   let a=allAccounts.find(x=>x.id===id);
   if(!a){
@@ -5892,6 +5905,13 @@ function openAccount(id){
     }).catch(function(){if(typeof showToast==='function')showToast('Impossible d\'ouvrir cette annonce');});
     return;
   }
+  // 👁 Compteur de vues : +1 quand un AUTRE utilisateur ouvre l'annonce (1 fois/session)
+  try{
+    if(currentUser&&a.userId!==currentUser.uid&&!_viewedAcc[id]){
+      _viewedAcc[id]=1;
+      db.collection('accounts').doc(id).set({views:firebase.firestore.FieldValue.increment(1)},{merge:true}).catch(function(){});
+    }
+  }catch(e){}
   const g=GAMES.find(x=>x.key===a.game);
   const mediaArr=(a.media||[]);
   regMedia('acc',mediaArr);
@@ -5919,7 +5939,8 @@ function openAccount(id){
   }else if(sold){
     actionHtml=`<button class="btn-primary" disabled style="opacity:.5">✅ Déjà vendu</button>`;
   }else{
-    actionHtml=`<button class="btn-primary" onclick="openAccountPay('${a.id}')" style="margin-bottom:10px">🛒 Acheter ce compte · ${fmtMoney(+a.price||0)}</button>
+    var _mpPay=(a.omNumber||a.waveNumber)?`<button class="btn-primary" onclick="openMpPay('${a.id}')" style="margin-bottom:10px;background:linear-gradient(135deg,#ff8a00,#ff5a5a)">🟠🌊 Payer le vendeur (Orange Money / Wave)</button>`:'';
+    actionHtml=`${_mpPay}<button class="btn-primary" onclick="openAccountPay('${a.id}')" style="margin-bottom:10px">🛒 Acheter ce compte · ${fmtMoney(+a.price||0)}</button>
     ${a.isOfficial===true
       ? `<button class="btn-ghost-link" onclick="contactSupportAbout('${a.id}')">💬 Contacter via le support</button>`
       : (wa
@@ -7271,8 +7292,235 @@ function loadMyVpn(){
   },function(){});
 }
 function ownsVpn(fileId){return myVpn.some(function(m){return m.fileId===fileId;});}
+
+/* 🛍️ MES ACHATS (profil) : VPN achetés + comptes achetés */
+let myAccounts=[],_myAccUnsub=null;
+function loadMyAccounts(){
+  if(!currentUser){myAccounts=[];renderProfilePurchases();return;}
+  if(_myAccUnsub)return;
+  _myAccUnsub=db.collection('accountOrders').where('userId','==',currentUser.uid).onSnapshot(function(snap){
+    myAccounts=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());})
+      .filter(function(o){return o.status==='paid'||o.status==='delivered'||o.delivered;});
+    renderProfilePurchases();
+  },function(){});
+}
+function stopMyAccounts(){if(_myAccUnsub){_myAccUnsub();_myAccUnsub=null;}myAccounts=[];}
+function toggleAccCred(id,ev){try{if(ev)ev.stopPropagation();}catch(e){}var d=document.getElementById('acccred-'+id);if(d)d.style.display=(d.style.display==='none'||!d.style.display)?'block':'none';}
+function renderProfilePurchases(){
+  var el=document.getElementById('pf-purchases');if(!el)return;
+  var html='';
+  (myVpn||[]).forEach(function(m){
+    html+='<div class="set-row" onclick="downloadMyVpn(\''+m.id+'\')">'
+      +'<div class="set-ico">🔐</div>'
+      +'<div class="set-txt"><div class="set-name">'+vEsc(m.name||m.fileName||'VPN')+'</div><div class="set-desc">✅ VPN acheté — appuyez pour télécharger</div></div>'
+      +'<span style="color:var(--green,#00e676);font-weight:700">📥</span></div>';
+  });
+  (myAccounts||[]).forEach(function(o){
+    var c=o.credentials||{};var hasCred=!!(c.login||c.password);
+    html+='<div class="set-row" style="align-items:flex-start" onclick="'+(hasCred?'toggleAccCred(\''+o.id+'\',event)':'payHistoryFromProfile()')+'">'
+      +'<div class="set-ico">🛍️</div>'
+      +'<div class="set-txt"><div class="set-name">'+vEsc(o.title||o.accountTitle||'Compte acheté')+'</div>'
+      +'<div class="set-desc">✅ Compte acheté'+(hasCred?' — appuyez pour voir les accès':'')+'</div>'
+      +(hasCred?'<div id="acccred-'+o.id+'" style="display:none;margin-top:8px;font-size:12.5px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;line-height:1.7">'
+          +'<div>Identifiant : <b>'+vEsc(c.login||'—')+'</b></div>'
+          +'<div>Mot de passe : <b>'+vEsc(c.password||'—')+'</b></div>'
+          +(c.notes?'<div>Notes : <b>'+vEsc(c.notes)+'</b></div>':'')
+        +'</div>':'')
+      +'</div><span style="color:var(--text3)">›</span></div>';
+  });
+  if(!html)html='<p style="margin:0;font-size:12px;color:var(--text3)">Aucun achat pour le moment. Vos VPN et comptes achetés apparaîtront ici.</p>';
+  el.innerHTML=html;
+}
+
+/* 📊 TABLEAU DE BORD VENDEUR : annonces du vendeur + stats (vues, ventes, gains) */
+let myListings=[],_myListUnsub=null;
+function loadMyListings(){
+  if(!currentUser){myListings=[];renderSellerDash();return;}
+  if(_myListUnsub)return;
+  _myListUnsub=db.collection('accounts').where('userId','==',currentUser.uid).onSnapshot(function(snap){
+    myListings=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    // s'assurer que ces annonces sont connues (pour openAccount / promoteBoost)
+    myListings.forEach(function(a){ if(!allAccounts.find(function(x){return x.id===a.id;}))allAccounts.push(a); });
+    renderSellerDash();
+  },function(){});
+}
+function stopMyListings(){if(_myListUnsub){_myListUnsub();_myListUnsub=null;}myListings=[];}
+function _statusLabel(s){
+  return s==='approved'?'<span style="color:var(--green,#00e676)">✅ En ligne</span>'
+    :s==='sold'?'<span style="color:var(--text3)">💰 Vendu</span>'
+    :s==='pending'?'<span style="color:#f5a623">⏳ En attente</span>'
+    :s==='rejected'?'<span style="color:var(--red,#ff4444)">❌ Refusée</span>'
+    :vEsc(s||'—');
+}
+function renderSellerDash(){
+  var el=document.getElementById('pf-seller');if(!el)return;
+  var reqHtml=mpRequestsHtml();
+  if(!myListings.length){
+    el.innerHTML=reqHtml+'<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Vous ne vendez pas encore de compte.</div>'
+      +'<button class="btn-primary" style="width:100%" onclick="screenFromProfile(\'sell\')">➕ Publier une annonce</button>';
+    return;
+  }
+  var totalViews=0,sold=0,earn=0,active=0;
+  myListings.forEach(function(a){ totalViews+=(+a.views||0); if(a.status==='sold'){sold++;earn+=(+a.price||0);} if(a.status==='approved')active++; });
+  var stats='<div class="pf-stats" style="margin-bottom:10px">'
+    +'<div class="pf-stat"><div class="pf-stat-v">'+active+'</div><div class="pf-stat-l">En ligne</div></div>'
+    +'<div class="pf-stat"><div class="pf-stat-v">'+totalViews+'</div><div class="pf-stat-l">👁 Vues</div></div>'
+    +'<div class="pf-stat"><div class="pf-stat-v">'+sold+'</div><div class="pf-stat-l">Ventes</div></div>'
+    +'<div class="pf-stat"><div class="pf-stat-v" style="font-size:14px">'+fmtMoney(earn)+'</div><div class="pf-stat-l">Gains</div></div>'
+    +'</div>';
+  var rows=myListings.slice().sort(function(a,b){
+      var ta=(a.createdAt&&a.createdAt.toMillis)?a.createdAt.toMillis():0;
+      var tb=(b.createdAt&&b.createdAt.toMillis)?b.createdAt.toMillis():0;return tb-ta;
+    }).map(function(a){
+    var boosted=a.promoted&&a.promotedUntil&&a.promotedUntil.toMillis&&a.promotedUntil.toMillis()>Date.now();
+    var canBoost=a.status==='approved'&&!boosted;
+    return '<div class="set-row" style="align-items:flex-start">'
+      +'<div class="set-ico" onclick="openAccount(\''+a.id+'\')">🛒</div>'
+      +'<div class="set-txt" onclick="openAccount(\''+a.id+'\')"><div class="set-name">'+vEsc(a.title||'Annonce')+(boosted?' 📢':'')+'</div>'
+      +'<div class="set-desc">'+_statusLabel(a.status)+' · 👁 '+(+a.views||0)+' · '+fmtMoney(+a.price||0)+'</div></div>'
+      +(canBoost
+          ?'<button style="padding:6px 10px;border:none;border-radius:8px;font-size:11px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))" onclick="promoteBoost(\''+a.id+'\')">📢 Booster</button>'
+          :(boosted?'<span style="font-size:11px;color:var(--accent);font-weight:700">📢 Sponsorisé</span>':''))
+      +'</div>';
+  }).join('');
+  el.innerHTML=reqHtml+stats+rows;
+}
+
+/* ═══════════ VENTE ENTRE PARTICULIERS (paiement manuel OM/Wave au vendeur) ═══════════ */
+let mpIncoming=[],_mpInUnsub=null,_mpOutUnsub=null,_mpInInit=false,_mpSeenIn={},_mpOutSeen={};
+let _mpAcc=null,_mpProofFile=null;
+
+// ── Côté VENDEUR : bloc « Demandes d'achat reçues » (dans le tableau de bord) ──
+function mpRequestsHtml(){
+  var pend=(mpIncoming||[]).filter(function(o){return o.status==='pending';});
+  if(!pend.length)return '';
+  var rows=pend.sort(function(a,b){var ta=(a.createdAt&&a.createdAt.toMillis)?a.createdAt.toMillis():0;var tb=(b.createdAt&&b.createdAt.toMillis)?b.createdAt.toMillis():0;return tb-ta;}).map(function(o){
+    return '<div style="border:1px solid var(--accent);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--bg3)">'
+      +'<div style="font-weight:700;font-size:13px;margin-bottom:4px">🛒 '+vEsc(o.listingTitle||'Compte')+' · '+fmtMoney(+o.price||0)+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);line-height:1.7">Acheteur : <b>'+vEsc(o.buyerName||'Client')+'</b>'
+      +(o.buyerPhone?'<br>📞 '+vEsc(o.buyerPhone):'')
+      +(o.proofUrl?'<br><a href="'+o.proofUrl+'" target="_blank" rel="noopener" style="color:var(--accent)">📎 Voir la preuve de paiement</a>':'<br><span style="color:var(--text3)">Aucune preuve jointe</span>')
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:10px">'
+        +'<button style="flex:1;padding:8px;border:none;border-radius:8px;font-weight:700;font-size:12px;color:#052;background:linear-gradient(135deg,#00e676,#00b0ff)" onclick="mpConfirm(\''+o.id+'\')">✅ Confirmer</button>'
+        +'<button style="flex:1;padding:8px;border:none;border-radius:8px;font-weight:700;font-size:12px;color:#fff;background:linear-gradient(135deg,#ff5a5a,#c0392b)" onclick="mpRefuse(\''+o.id+'\')">❌ Refuser</button>'
+      +'</div></div>';
+  }).join('');
+  return '<div class="settings-group-label" style="margin:0 0 8px;color:var(--accent)">📥 Demandes d\'achat reçues ('+pend.length+')</div>'+rows;
+}
+async function mpConfirm(id){
+  var o=(mpIncoming||[]).find(function(x){return x.id===id;});if(!o)return;
+  if(!confirm('Confirmer la vente de « '+(o.listingTitle||'')+' » ?\nLe compte sera marqué comme vendu.'))return;
+  try{
+    await db.collection('marketplaceOrders').doc(id).set({status:'confirmed',confirmedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    try{await db.collection('accounts').doc(o.listingId).set({status:'sold',soldAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(e){}
+    try{fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:o.buyerId,title:'✅ Achat confirmé',body:'Votre achat « '+(o.listingTitle||'')+' » est confirmé. Contactez le vendeur pour la livraison.',type:'account'})});}catch(e){}
+    showToast('✅ Vente confirmée');
+  }catch(e){showToast('❌ '+(e.message||'Erreur'));}
+}
+async function mpRefuse(id){
+  var o=(mpIncoming||[]).find(function(x){return x.id===id;});if(!o)return;
+  if(!confirm('Refuser cette demande d\'achat ?'))return;
+  try{
+    await db.collection('marketplaceOrders').doc(id).set({status:'refused',refusedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    try{fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:o.buyerId,title:'❌ Demande refusée',body:'Le vendeur a refusé « '+(o.listingTitle||'')+' ».',type:'account'})});}catch(e){}
+    showToast('Demande refusée');
+  }catch(e){showToast('❌ '+(e.message||'Erreur'));}
+}
+
+// ── Côté ACHETEUR : fenêtre de paiement manuel au vendeur ──
+function openMpPay(id){
+  if(!currentUser){openAuthModal();showToast('🔐 Connectez-vous pour acheter');return;}
+  var a=allAccounts.find(function(x){return x.id===id;});if(!a)return;
+  if(a.userId===currentUser.uid){showToast('C\'est votre propre annonce');return;}
+  _mpAcc=a;_mpProofFile=null;
+  var ov=document.getElementById('mp-pay-ov');
+  if(!ov){
+    ov=document.createElement('div');ov.id='mp-pay-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
+    ov.onclick=function(e){if(e.target===ov)closeMpPay();};
+    ov.innerHTML='<div id="mp-pay-card" style="background:var(--bg2,#0d1426);width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px"></div>';
+    document.body.appendChild(ov);
+  }
+  var om=(a.omNumber||'').trim(),wave=(a.waveNumber||'').trim();
+  var numStyle='display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer';
+  document.getElementById('mp-pay-card').innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:16px">🛒 Payer le vendeur</b><span onclick="closeMpPay()" style="font-size:20px;cursor:pointer;color:var(--text3)">✕</span></div>'
+    +'<div style="font-size:13px;color:var(--text2)">'+vEsc(a.title||'Compte')+'</div>'
+    +'<div style="font-weight:800;font-size:20px;color:var(--gold,#ffd700);margin:4px 0 12px">'+fmtMoney(+a.price||0)+'</div>'
+    +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">Envoyez le montant à l\'un des numéros ci-dessous (appuyez pour copier), puis joignez la capture du paiement.</div>'
+    +(om?'<div style="'+numStyle+'" onclick="mpCopy(\''+om+'\')"><span>🟠 Orange Money</span><b>'+vEsc(om)+' 📋</b></div>':'')
+    +(wave?'<div style="'+numStyle+'" onclick="mpCopy(\''+wave+'\')"><span>🌊 Wave</span><b>'+vEsc(wave)+' 📋</b></div>':'')
+    +'<div style="margin-top:12px"><label style="font-size:12px;color:var(--text2)">Votre numéro (pour la vérification)</label>'
+      +'<input id="mp-buyer-phone" type="tel" inputmode="numeric" placeholder="Ex: 82131418" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')" style="width:100%;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin-top:5px"/></div>'
+    +'<div style="margin-top:12px"><label style="font-size:12px;color:var(--text2)">Capture du paiement (recommandé)</label>'
+      +'<input id="mp-proof" type="file" accept="image/*" onchange="_mpProofFile=this.files[0]" style="width:100%;margin-top:5px;font-size:12px;color:var(--text2)"/></div>'
+    +'<button class="btn-primary" style="width:100%;margin-top:16px" id="mp-send-btn" onclick="submitMpOrder()">✅ J\'ai payé — envoyer la demande</button>'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">Le vendeur vérifie votre paiement puis confirme. Vous recevrez une notification et son contact pour recevoir le compte.</div>'
+    +'<div style="height:8px"></div>';
+  ov.style.display='flex';
+}
+function closeMpPay(){var ov=document.getElementById('mp-pay-ov');if(ov)ov.style.display='none';}
+function mpCopy(t){try{navigator.clipboard.writeText(t);}catch(e){}showToast('📋 Copié : '+t);}
+async function submitMpOrder(){
+  if(!currentUser||!_mpAcc)return;
+  var a=_mpAcc;
+  var phone=((document.getElementById('mp-buyer-phone')||{}).value||'').trim();
+  var btn=document.getElementById('mp-send-btn');if(btn){btn.disabled=true;btn.textContent='⏳ Envoi…';}
+  var proofUrl='';
+  try{ if(_mpProofFile&&typeof imgbbUploadClient==='function'){ proofUrl=await imgbbUploadClient(_mpProofFile); } }catch(e){ proofUrl=''; }
+  try{
+    await db.collection('marketplaceOrders').add({
+      listingId:a.id,listingTitle:a.title||'Compte',price:+a.price||0,
+      sellerId:a.userId,sellerName:a.userName||'Vendeur',sellerContact:(a.contact||''),
+      buyerId:currentUser.uid,buyerName:currentUser.displayName||(currentUser.email||'').split('@')[0],
+      buyerPhone:phone,proofUrl:proofUrl,status:'pending',
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    try{fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:a.userId,title:'🛒 Nouvelle demande d\'achat',body:'Un client veut acheter « '+(a.title||'votre annonce')+' ». Vérifiez le paiement dans votre tableau de bord.',type:'seller'})});}catch(e){}
+    closeMpPay();
+    showToast('✅ Demande envoyée ! Le vendeur va vérifier votre paiement.');
+  }catch(e){showToast('❌ '+(e.message||'Erreur, réessayez'));}
+  if(btn){btn.disabled=false;btn.textContent='✅ J\'ai payé — envoyer la demande';}
+}
+function mpShowConfirmed(o){
+  var c=(o.sellerContact||'').trim();
+  var msg='✅ Achat confirmé !\n\n« '+(o.listingTitle||'')+' »\n\n'+(c?('Contactez le vendeur pour recevoir votre compte :\n'+c):'Le vendeur va vous contacter pour la livraison.');
+  try{setTimeout(function(){alert(msg);},300);}catch(e){showToast('✅ Achat confirmé !');}
+}
+
+// ── Écoute des demandes (vendeur = reçues, acheteur = envoyées) ──
+function loadMpOrders(){
+  if(!currentUser)return;
+  if(!_mpInUnsub){
+    _mpInUnsub=db.collection('marketplaceOrders').where('sellerId','==',currentUser.uid).onSnapshot(function(snap){
+      mpIncoming=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+      if(_mpInInit){
+        mpIncoming.forEach(function(o){ if(o.status==='pending'&&!_mpSeenIn[o.id]){_mpSeenIn[o.id]=1;notifyPhone('🛒 Nouvelle demande d\'achat','Un client veut acheter « '+(o.listingTitle||'')+' »','seller');} });
+      }else{ mpIncoming.forEach(function(o){_mpSeenIn[o.id]=1;}); _mpInInit=true; }
+      try{renderSellerDash();}catch(e){}
+    },function(){});
+  }
+  if(!_mpOutUnsub){
+    _mpOutUnsub=db.collection('marketplaceOrders').where('buyerId','==',currentUser.uid).onSnapshot(function(snap){
+      snap.docChanges().forEach(function(ch){
+        if(ch.type!=='modified'&&ch.type!=='added')return;
+        var o=Object.assign({id:ch.doc.id},ch.doc.data());
+        if(o.status==='confirmed'&&_mpOutSeen[o.id]!=='confirmed'){ if(_mpOutSeen[o.id]!==undefined){notifyPhone('✅ Achat confirmé','Le vendeur a confirmé « '+(o.listingTitle||'')+' ».','account');mpShowConfirmed(o);} _mpOutSeen[o.id]='confirmed'; }
+        else if(o.status==='refused'&&_mpOutSeen[o.id]!=='refused'){ if(_mpOutSeen[o.id]!==undefined){notifyPhone('❌ Demande refusée','Le vendeur a refusé « '+(o.listingTitle||'')+' ».','account');showToast('❌ Votre demande a été refusée.');} _mpOutSeen[o.id]='refused'; }
+        else if(_mpOutSeen[o.id]===undefined){ _mpOutSeen[o.id]=o.status; }
+      });
+    },function(){});
+  }
+}
+function stopMpOrders(){
+  if(_mpInUnsub){_mpInUnsub();_mpInUnsub=null;}
+  if(_mpOutUnsub){_mpOutUnsub();_mpOutUnsub=null;}
+  mpIncoming=[];_mpInInit=false;_mpSeenIn={};_mpOutSeen={};
+}
 function renderMyVpn(){
   const wrap=document.getElementById('vpn-mine-wrap'),list=document.getElementById('vpn-mine-list');
+  try{renderProfilePurchases();}catch(e){}   // 🛍️ met aussi à jour la section « Mes achats » du profil
   if(!wrap||!list)return;
   if(!myVpn.length){wrap.style.display='none';list.innerHTML='';return;}
   wrap.style.display='block';
@@ -7505,6 +7753,8 @@ function editListing(id){
   document.getElementById('sell-desc').value=a.desc||'';
   document.getElementById('sell-price').value=a.price||'';
   document.getElementById('sell-contact').value=a.contact||'';
+  document.getElementById('sell-om').value=a.omNumber||'';
+  document.getElementById('sell-wave').value=a.waveNumber||'';
   sellMedia=(a.media||[]).map(m=>({type:m.type,url:m.url}));
   const inst=document.getElementById('sell-instant');if(inst){inst.checked=!!a.instantDelivery;toggleInstantFields(!!a.instantDelivery);}
   document.getElementById('ai-price-box').style.display='none';
@@ -7609,6 +7859,8 @@ async function submitAccount(){
       level:+document.getElementById('sell-level').value||null,rank:document.getElementById('sell-rank').value.trim()||'',
       skins:+document.getElementById('sell-skins').value||null,uc:+document.getElementById('sell-uc').value||null,
       desc:document.getElementById('sell-desc').value.trim()||'',contact:document.getElementById('sell-contact').value.trim()||'',
+      omNumber:document.getElementById('sell-om').value.trim()||'',
+      waveNumber:document.getElementById('sell-wave').value.trim()||'',
       media:sellMedia.map(m=>({type:m.type,url:m.url})),
       instantDelivery:instant,
       status:'pending' // (re)validation par un admin
@@ -7631,7 +7883,7 @@ async function submitAccount(){
     }
     showToast(editListingId?'✅ Annonce modifiée — en attente de validation':'✅ Annonce envoyée pour validation !');
     editListingId=null;
-    ['sell-title','sell-level','sell-rank','sell-skins','sell-uc','sell-desc','sell-price','sell-contact','sell-cred-login','sell-cred-pass','sell-cred-notes'].forEach(id=>document.getElementById(id).value='');
+    ['sell-title','sell-level','sell-rank','sell-skins','sell-uc','sell-desc','sell-price','sell-contact','sell-om','sell-wave','sell-cred-login','sell-cred-pass','sell-cred-notes'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('sell-instant').checked=false;toggleInstantFields(false);
     sellMedia=[];renderSellMedia();document.getElementById('ai-price-box').style.display='none';
     btn.textContent='📤 Publier mon annonce';
