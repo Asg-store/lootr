@@ -7338,6 +7338,24 @@ function renderProfilePurchases(){
         +'</div>':'')
       +'</div><span style="color:var(--text3)">›</span></div>';
   });
+  // 🛒 Comptes achetés entre particuliers (Orange Money / Wave) et confirmés
+  (myMpBuys||[]).filter(function(o){return o.status==='confirmed';}).forEach(function(o){
+    var c=o.credentials||{};var hasCred=!!(c.login||c.password||c.notes);
+    var contact=(o.sellerContact||'').trim();
+    html+='<div class="set-row" style="align-items:flex-start" onclick="toggleAccCred(\'mp'+o.id+'\',event)">'
+      +'<div class="set-ico">🛒</div>'
+      +'<div class="set-txt"><div class="set-name">'+vEsc(o.listingTitle||'Compte acheté')+'</div>'
+      +'<div class="set-desc">✅ Acheté au vendeur — appuyez pour voir les détails</div>'
+      +'<div id="acccred-mp'+o.id+'" style="display:none;margin-top:8px;font-size:12.5px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;line-height:1.7">'
+        +(hasCred
+            ?('<div>📧 Email / Identifiant : <b>'+vEsc(c.login||'—')+'</b></div>'
+             +'<div>🔑 Mot de passe : <b>'+vEsc(c.password||'—')+'</b></div>'
+             +(c.notes?'<div>📝 Infos : <b>'+vEsc(c.notes)+'</b></div>':''))
+            :'<div style="color:var(--text3)">Le vendeur n\'a pas encore saisi les accès.</div>')
+        +(contact?'<div style="margin-top:6px">💬 Contact vendeur : <b>'+vEsc(contact)+'</b></div>':'')
+      +'</div>'
+      +'</div><span style="color:var(--text3)">›</span></div>';
+  });
   if(!html)html='<p style="margin:0;font-size:12px;color:var(--text3)">Aucun achat pour le moment. Vos VPN et comptes achetés apparaîtront ici.</p>';
   el.innerHTML=html;
 }
@@ -7397,7 +7415,7 @@ function renderSellerDash(){
 }
 
 /* ═══════════ VENTE ENTRE PARTICULIERS (paiement manuel OM/Wave au vendeur) ═══════════ */
-let mpIncoming=[],_mpInUnsub=null,_mpOutUnsub=null,_mpInInit=false,_mpSeenIn={},_mpOutSeen={};
+let mpIncoming=[],myMpBuys=[],_mpInUnsub=null,_mpOutUnsub=null,_mpInInit=false,_mpSeenIn={},_mpOutSeen={};
 let _mpAcc=null,_mpProofFile=null;
 
 // ── Côté VENDEUR : bloc « Demandes d'achat reçues » (dans le tableau de bord) ──
@@ -7418,15 +7436,49 @@ function mpRequestsHtml(){
   }).join('');
   return '<div class="settings-group-label" style="margin:0 0 8px;color:var(--accent)">📥 Demandes d\'achat reçues ('+pend.length+')</div>'+rows;
 }
-async function mpConfirm(id){
+function mpConfirm(id){
   var o=(mpIncoming||[]).find(function(x){return x.id===id;});if(!o)return;
-  if(!confirm('Confirmer la vente de « '+(o.listingTitle||'')+' » ?\nLe compte sera marqué comme vendu.'))return;
+  // Fenêtre pour saisir les accès du compte → livrés à l'acheteur dans « Mes achats »
+  var ov=document.getElementById('mp-confirm-ov');
+  if(!ov){
+    ov=document.createElement('div');ov.id='mp-confirm-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
+    ov.onclick=function(e){if(e.target===ov)ov.style.display='none';};
+    ov.innerHTML='<div id="mp-confirm-card" style="background:var(--bg2,#0d1426);width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px"></div>';
+    document.body.appendChild(ov);
+  }
+  document.getElementById('mp-confirm-card').innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:16px">✅ Confirmer & livrer</b><span onclick="document.getElementById(\'mp-confirm-ov\').style.display=\'none\'" style="font-size:20px;cursor:pointer;color:var(--text3)">✕</span></div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Saisissez les accès du compte « '+vEsc(o.listingTitle||'')+' ». L\'acheteur les verra dans <b>Mon profil → Mes achats</b>.</div>'
+    +'<label style="font-size:12px;color:var(--text2)">📧 Email / Identifiant du compte</label>'
+    +'<input id="mpc-login" placeholder="email ou identifiant du compte" style="width:100%;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin:5px 0 10px"/>'
+    +'<label style="font-size:12px;color:var(--text2)">🔑 Mot de passe</label>'
+    +'<input id="mpc-pass" placeholder="mot de passe du compte" style="width:100%;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin:5px 0 10px"/>'
+    +'<label style="font-size:12px;color:var(--text2)">📝 Autres infos (facultatif)</label>'
+    +'<textarea id="mpc-notes" placeholder="Ex: email de secours, code de sécurité, instructions de connexion…" style="width:100%;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin:5px 0 10px;min-height:70px"></textarea>'
+    +'<button class="btn-primary" style="width:100%" id="mpc-btn" onclick="mpConfirmDo(\''+id+'\')">✅ Confirmer la vente & livrer</button>'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">L\'annonce sera marquée « Vendu ». Ne confirmez qu\'APRÈS avoir bien reçu le paiement.</div>'
+    +'<div style="height:8px"></div>';
+  ov.style.display='flex';
+}
+async function mpConfirmDo(id){
+  var o=(mpIncoming||[]).find(function(x){return x.id===id;});if(!o)return;
+  var login=((document.getElementById('mpc-login')||{}).value||'').trim();
+  var pass=((document.getElementById('mpc-pass')||{}).value||'').trim();
+  var notes=((document.getElementById('mpc-notes')||{}).value||'').trim();
+  if(!login&&!pass){ if(!confirm('Aucun accès saisi. Confirmer quand même ? (l\'acheteur devra vous contacter)'))return; }
+  var btn=document.getElementById('mpc-btn');if(btn){btn.disabled=true;btn.textContent='⏳ Livraison…';}
   try{
-    await db.collection('marketplaceOrders').doc(id).set({status:'confirmed',confirmedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await db.collection('marketplaceOrders').doc(id).set({
+      status:'confirmed',confirmedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      credentials:{login:login,password:pass,notes:notes}
+    },{merge:true});
     try{await db.collection('accounts').doc(o.listingId).set({status:'sold',soldAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(e){}
-    try{fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:o.buyerId,title:'✅ Achat confirmé',body:'Votre achat « '+(o.listingTitle||'')+' » est confirmé. Contactez le vendeur pour la livraison.',type:'account'})});}catch(e){}
-    showToast('✅ Vente confirmée');
+    try{fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:o.buyerId,title:'✅ Achat confirmé',body:'Votre compte « '+(o.listingTitle||'')+' » est livré ! Voir les accès dans Mon profil → Mes achats.',type:'account'})});}catch(e){}
+    var ov=document.getElementById('mp-confirm-ov');if(ov)ov.style.display='none';
+    showToast('✅ Vente confirmée & compte livré');
   }catch(e){showToast('❌ '+(e.message||'Erreur'));}
+  if(btn){btn.disabled=false;btn.textContent='✅ Confirmer la vente & livrer';}
 }
 async function mpRefuse(id){
   var o=(mpIncoming||[]).find(function(x){return x.id===id;});if(!o)return;
@@ -7534,12 +7586,12 @@ function loadMpOrders(){
   }
   if(!_mpOutUnsub){
     _mpOutUnsub=db.collection('marketplaceOrders').where('buyerId','==',currentUser.uid).onSnapshot(function(snap){
+      myMpBuys=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
       snap.forEach(function(d){
         var o=Object.assign({id:d.id},d.data());
         if(o.status==='confirmed'){
-          var c=(o.sellerContact||'').trim();
           mpWriteBell('mpres_'+o.id,{icon:'✅',title:'Achat confirmé',
-            body:'Le vendeur a confirmé « '+(o.listingTitle||'')+' ». '+(c?('Contactez-le pour recevoir le compte : '+c):'Il va vous contacter pour la livraison.'),
+            body:'Le vendeur a confirmé « '+(o.listingTitle||'')+' ». Vos accès sont disponibles dans Mon profil → Mes achats.',
             type:'account',link:'',refId:o.id});
         }else if(o.status==='refused'){
           mpWriteBell('mpref_'+o.id,{icon:'❌',title:'Demande refusée',
@@ -7547,6 +7599,7 @@ function loadMpOrders(){
             type:'account',link:'',refId:o.id});
         }
       });
+      try{renderProfilePurchases();}catch(e){}   // 🛍️ met à jour « Mes achats »
     },function(){});
   }
 }
