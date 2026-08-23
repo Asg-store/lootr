@@ -6866,10 +6866,16 @@ function showCartPaymentFailed(){
 
 /* ─── ÉCRAN DE LIVRAISON : progression estimée 1 à 2 minutes ─── */
 let _dlvTimers=[];
-function showDeliveryProgress(order,fast){
+function showDeliveryProgress(order,opt){
   order=order||{};
   if(order.id){try{_dlvSeenAdd(order.id);}catch(e){}}   // évite un double affichage par le watcher global
   _dlvTimers.forEach(clearTimeout);_dlvTimers=[];
+  // Durée + mode : nombre = secondes ; true = rapide (5s) ; objet {sec,account} ; défaut 87s
+  var _sec,_isAccount=false;
+  if(typeof opt==='number'){_sec=opt;}
+  else if(opt===true){_sec=5;}
+  else if(opt&&typeof opt==='object'){_sec=(+opt.sec>0?+opt.sec:30);_isAccount=!!opt.account;}
+  else{_sec=87;}
   const ov=document.getElementById('delivery-overlay');
   const fill=document.getElementById('dlv-bar-fill');
   const steps=[].slice.call(document.querySelectorAll('#dlv-steps .dlv-step'));
@@ -6878,7 +6884,7 @@ function showDeliveryProgress(order,fast){
   fill.style.width='0';
   // Récap commande
   const items=(order.items||[]).map(i=>`${i.qty||1}× ${i.name}`).join(', ');
-  const pay=order.paymentMethod==='points'?'Points':order.paymentMethod==='wallet'?'Portefeuille':'Carte';
+  const pay=order._payLabel||(order.paymentMethod==='points'?'Points':order.paymentMethod==='wallet'?'Portefeuille':'Carte');
   const _e=s=>(''+s).replace(/</g,'&lt;');
   const ic={
     user:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5c0-3.7 3.4-5.5 7.5-5.5s7.5 1.8 7.5 5.5"/></svg>',
@@ -6898,11 +6904,10 @@ function showDeliveryProgress(order,fast){
   const titleEl=document.querySelector('#delivery-overlay .dlv-title');
   const etaEl=document.querySelector('#delivery-overlay .dlv-eta');
   // Progression : on complète les 4 étapes puis « livré » — l'écran ne reste JAMAIS bloqué
-  // fast=true (commande DÉJÀ confirmée par l'admin) → progression rapide (~5 s).
-  var _dur=fast?5:87;
-  try{fill.style.transition='width '+_dur+'s linear';}catch(e){}
+  var _durMs=_sec*1000;
+  try{fill.style.transition='width '+_sec+'s linear';}catch(e){}
   _dlvTimers.push(setTimeout(function(){fill.style.width='94%';},400));
-  const stepAt=fast?[400,1800,3200,4800]:[1000,25000,55000,90000]; // Paiement · Préparation · Livraison · Livré
+  const stepAt=[Math.max(400,Math.round(_durMs*0.05)),Math.round(_durMs*0.35),Math.round(_durMs*0.70),_durMs]; // Paiement · Préparation · Livraison · Livré
   stepAt.forEach(function(ms,si){
     _dlvTimers.push(setTimeout(function(){
       const st=steps[si];if(st){st.classList.add('active');st.querySelector('.dlv-dot').innerHTML=check;}
@@ -6910,10 +6915,16 @@ function showDeliveryProgress(order,fast){
         try{fill.style.transition='width .4s ease';}catch(e){}
         fill.style.width='100%';
         if(titleEl)titleEl.textContent='✅ C\'est livré !';
-        if(etaEl)etaEl.innerHTML='Livraison effectuée';
-        // Ouvre automatiquement la facture (si on a l'ID de commande)
-        if(order&&order.id){
-          _dlvTimers.push(setTimeout(function(){ try{closeDelivery();}catch(e){} try{showInvoice(order.id);}catch(e){} },1500));
+        if(_isAccount){
+          // 🛒 Livraison d'un compte acheté entre particuliers
+          if(etaEl)etaEl.innerHTML='Vos accès sont dans Mon profil → Mes achats';
+          _dlvTimers.push(setTimeout(function(){ try{closeDelivery();}catch(e){} try{openProfile();}catch(e){} },2000));
+        }else{
+          if(etaEl)etaEl.innerHTML='Livraison effectuée';
+          // Ouvre automatiquement la facture (si on a l'ID de commande)
+          if(order&&order.id){
+            _dlvTimers.push(setTimeout(function(){ try{closeDelivery();}catch(e){} try{showInvoice(order.id);}catch(e){} },1500));
+          }
         }
       }
     },ms));
@@ -7587,12 +7598,16 @@ function loadMpOrders(){
   if(!_mpOutUnsub){
     _mpOutUnsub=db.collection('marketplaceOrders').where('buyerId','==',currentUser.uid).onSnapshot(function(snap){
       myMpBuys=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
-      snap.forEach(function(d){
-        var o=Object.assign({id:d.id},d.data());
+      snap.docChanges().forEach(function(ch){
+        var o=Object.assign({id:ch.doc.id},ch.doc.data());
         if(o.status==='confirmed'){
           mpWriteBell('mpres_'+o.id,{icon:'✅',title:'Achat confirmé',
             body:'Le vendeur a confirmé « '+(o.listingTitle||'')+' ». Vos accès sont disponibles dans Mon profil → Mes achats.',
             type:'account',link:'',refId:o.id});
+          // 🚚 Confirmation EN DIRECT (le vendeur vient de confirmer) → écran de livraison 30 s
+          if(ch.type==='modified'){
+            try{ showDeliveryProgress({id:o.id,_payLabel:'Orange Money / Wave',items:[{qty:1,name:(o.listingTitle||'Compte')}]},{sec:30,account:true}); }catch(e){}
+          }
         }else if(o.status==='refused'){
           mpWriteBell('mpref_'+o.id,{icon:'❌',title:'Demande refusée',
             body:'Le vendeur a refusé votre demande d\'achat pour « '+(o.listingTitle||'')+' ».',
