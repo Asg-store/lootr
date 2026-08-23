@@ -1914,7 +1914,17 @@ body.ios .pnotif .pn-ic{border-radius:11px}
       <div class="ai-r" id="ai-price-reason"></div>
     </div>
 
-    <div class="field"><label>Prix de vente (€) *</label><input id="sell-price" type="number" step="0.01" min="0" placeholder="Ex: 45.00"/></div>
+    <div class="field"><label>Prix de vente *</label>
+      <div style="display:flex;gap:8px">
+        <input id="sell-price" type="number" step="0.01" min="0" placeholder="Ex: 25000" style="flex:1"/>
+        <select id="sell-price-cur" style="width:96px;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text)">
+          <option value="xof">XOF</option>
+          <option value="eur">€ EUR</option>
+          <option value="usd">$ USD</option>
+        </select>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:5px">Choisissez la devise de votre prix. Il s'affichera automatiquement dans la devise de chaque acheteur.</div>
+    </div>
     <div class="field"><label>WhatsApp / Contact</label><input id="sell-contact" placeholder="+223 …"/></div>
     <div class="field"><label>🟠 Numéro Orange Money (paiement)</label><input id="sell-om" type="tel" inputmode="numeric" placeholder="Ex: 82131418" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
     <div class="field"><label>🌊 Numéro Wave (paiement)</label><input id="sell-wave" type="tel" inputmode="numeric" placeholder="Ex: 70000000" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
@@ -7489,26 +7499,53 @@ function mpShowConfirmed(o){
   try{setTimeout(function(){alert(msg);},300);}catch(e){showToast('✅ Achat confirmé !');}
 }
 
+// Écrit une notification dans la cloche 🔔 de l'utilisateur courant (idempotent).
+//  silent:true → pas de 2e bannière (le push /api/send-push a déjà alerté).
+function mpWriteBell(docId,notif){
+  if(!currentUser)return;
+  try{
+    var seen=JSON.parse(localStorage.getItem('mp-bell-seen')||'[]')||[];
+    if(seen.indexOf(docId)>=0)return;                 // déjà créée → on ne refait pas
+    seen.push(docId);if(seen.length>300)seen=seen.slice(-300);
+    localStorage.setItem('mp-bell-seen',JSON.stringify(seen));
+  }catch(e){}
+  try{
+    db.collection('users').doc(currentUser.uid).collection('notifications').doc(docId).set(Object.assign({
+      read:false,silent:true,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    },notif),{merge:true}).catch(function(){});
+  }catch(e){}
+}
 // ── Écoute des demandes (vendeur = reçues, acheteur = envoyées) ──
 function loadMpOrders(){
   if(!currentUser)return;
   if(!_mpInUnsub){
     _mpInUnsub=db.collection('marketplaceOrders').where('sellerId','==',currentUser.uid).onSnapshot(function(snap){
       mpIncoming=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
-      if(_mpInInit){
-        mpIncoming.forEach(function(o){ if(o.status==='pending'&&!_mpSeenIn[o.id]){_mpSeenIn[o.id]=1;notifyPhone('🛒 Nouvelle demande d\'achat','Un client veut acheter « '+(o.listingTitle||'')+' »','seller');} });
-      }else{ mpIncoming.forEach(function(o){_mpSeenIn[o.id]=1;}); _mpInInit=true; }
+      // 🔔 Une entrée cloche par demande reçue (idempotent, silencieuse)
+      mpIncoming.forEach(function(o){
+        if(o.status==='pending'){
+          mpWriteBell('mpreq_'+o.id,{icon:'🛒',title:'Nouvelle demande d\'achat',
+            body:(o.buyerName||'Un client')+' veut acheter « '+(o.listingTitle||'')+' » ('+fmtMoney(+o.price||0)+'). Vérifiez le paiement dans votre tableau de bord vendeur.',
+            type:'seller',link:'seller',refId:o.id});
+        }
+      });
       try{renderSellerDash();}catch(e){}
     },function(){});
   }
   if(!_mpOutUnsub){
     _mpOutUnsub=db.collection('marketplaceOrders').where('buyerId','==',currentUser.uid).onSnapshot(function(snap){
-      snap.docChanges().forEach(function(ch){
-        if(ch.type!=='modified'&&ch.type!=='added')return;
-        var o=Object.assign({id:ch.doc.id},ch.doc.data());
-        if(o.status==='confirmed'&&_mpOutSeen[o.id]!=='confirmed'){ if(_mpOutSeen[o.id]!==undefined){notifyPhone('✅ Achat confirmé','Le vendeur a confirmé « '+(o.listingTitle||'')+' ».','account');mpShowConfirmed(o);} _mpOutSeen[o.id]='confirmed'; }
-        else if(o.status==='refused'&&_mpOutSeen[o.id]!=='refused'){ if(_mpOutSeen[o.id]!==undefined){notifyPhone('❌ Demande refusée','Le vendeur a refusé « '+(o.listingTitle||'')+' ».','account');showToast('❌ Votre demande a été refusée.');} _mpOutSeen[o.id]='refused'; }
-        else if(_mpOutSeen[o.id]===undefined){ _mpOutSeen[o.id]=o.status; }
+      snap.forEach(function(d){
+        var o=Object.assign({id:d.id},d.data());
+        if(o.status==='confirmed'){
+          var c=(o.sellerContact||'').trim();
+          mpWriteBell('mpres_'+o.id,{icon:'✅',title:'Achat confirmé',
+            body:'Le vendeur a confirmé « '+(o.listingTitle||'')+' ». '+(c?('Contactez-le pour recevoir le compte : '+c):'Il va vous contacter pour la livraison.'),
+            type:'account',link:'',refId:o.id});
+        }else if(o.status==='refused'){
+          mpWriteBell('mpref_'+o.id,{icon:'❌',title:'Demande refusée',
+            body:'Le vendeur a refusé votre demande d\'achat pour « '+(o.listingTitle||'')+' ».',
+            type:'account',link:'',refId:o.id});
+        }
       });
     },function(){});
   }
@@ -7751,7 +7788,8 @@ function editListing(id){
   document.getElementById('sell-skins').value=a.skins||'';
   document.getElementById('sell-uc').value=a.uc||'';
   document.getElementById('sell-desc').value=a.desc||'';
-  document.getElementById('sell-price').value=a.price||'';
+  document.getElementById('sell-price').value=(a.priceRaw!=null?a.priceRaw:(a.price||''));
+  var _pcs=document.getElementById('sell-price-cur');if(_pcs)_pcs.value=a.priceCur||'eur';
   document.getElementById('sell-contact').value=a.contact||'';
   document.getElementById('sell-om').value=a.omNumber||'';
   document.getElementById('sell-wave').value=a.waveNumber||'';
@@ -7844,9 +7882,13 @@ function toggleInstantFields(on){
 async function submitAccount(){
   if(!currentUser){openAuthModal();return;}
   const title=document.getElementById('sell-title').value.trim();
-  const price=parseFloat(document.getElementById('sell-price').value);
+  const priceRaw=parseFloat(document.getElementById('sell-price').value);
+  const priceCur=((document.getElementById('sell-price-cur')||{}).value)||'xof';
+  // 💱 On convertit le prix saisi vers la base EUR (pour l'affichage multi-devises).
+  const _rate=(CURRENCIES[priceCur]&&+CURRENCIES[priceCur].rate)||1;
+  const price=priceRaw/_rate;   // ex : 25000 XOF / 655.957 ≈ 38.11 € (base)
   if(!title){showToast('⚠️ Ajoutez un titre');return;}
-  if(isNaN(price)||price<=0){showToast('⚠️ Prix invalide');return;}
+  if(isNaN(priceRaw)||priceRaw<=0){showToast('⚠️ Prix invalide');return;}
   const instant=document.getElementById('sell-instant').checked;
   const credLogin=document.getElementById('sell-cred-login').value.trim();
   const credPass=document.getElementById('sell-cred-pass').value.trim();
@@ -7855,7 +7897,7 @@ async function submitAccount(){
   try{
     const data={
       userId:currentUser.uid,userName:currentUser.displayName||currentUser.email.split('@')[0],userEmail:currentUser.email||'',
-      game:document.getElementById('sell-game').value,title,price,
+      game:document.getElementById('sell-game').value,title,price,priceCur:priceCur,priceRaw:priceRaw,
       level:+document.getElementById('sell-level').value||null,rank:document.getElementById('sell-rank').value.trim()||'',
       skins:+document.getElementById('sell-skins').value||null,uc:+document.getElementById('sell-uc').value||null,
       desc:document.getElementById('sell-desc').value.trim()||'',contact:document.getElementById('sell-contact').value.trim()||'',
@@ -7927,7 +7969,7 @@ function loadUserNotifs(uid){
       rebuildNotifs();
       if(userNotifs.length){
         const newest=userNotifs[0];const t=notifTime(newest);
-        if(_unInit&&t>_unLastT&&localStorage.getItem('nex-notif-pref')!=='off'){
+        if(_unInit&&t>_unLastT&&!newest.silent&&localStorage.getItem('nex-notif-pref')!=='off'){
           // si l'utilisateur est DÉJÀ dans le chat, pas de bannière en double pour un message
           const sc=document.getElementById('screen-chat');
           const onChat=sc&&sc.classList.contains('open');
@@ -8018,6 +8060,9 @@ function routeNotif(n){
     // 📺 Vidéos → Daily Hot Videos
     case 'video': case 'social':
       openScreen('social'); return;
+    // 📊 Demande d'achat reçue → Tableau de bord vendeur (Mon profil)
+    case 'seller':
+      (typeof openProfile==='function')?openProfile():openScreen('profile'); return;
   }
   // ─── Repli par mots-clés du titre (anciennes notifs sans « link ») ───
   if(title.indexOf('support')>=0||title.indexOf('message')>=0){ _goChat(); return; }
@@ -9278,6 +9323,7 @@ function openSectionByType(open){
     else if(open==='listing'||open==='marketplace'){openScreen('marketplace');}
     else if(open==='vpn'){openScreen('vpn');}
     else if(open==='video'||open==='social'){openScreen('social');}
+    else if(open==='seller'){(typeof openProfile==='function')?openProfile():openScreen('profile');}
     else if(open==='referral'||open==='invite'){openScreen('points');}
     else if(open==='announce'){openScreen('notifications');}
     else if(open==='info'||open===''){/* accueil, rien à ouvrir */}
