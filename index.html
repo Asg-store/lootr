@@ -6917,8 +6917,8 @@ function showDeliveryProgress(order,opt){
         if(titleEl)titleEl.textContent='✅ C\'est livré !';
         if(_isAccount){
           // 🛒 Livraison d'un compte acheté entre particuliers
-          if(etaEl)etaEl.innerHTML='Vos accès sont dans Mon profil → Mes achats';
-          _dlvTimers.push(setTimeout(function(){ try{closeDelivery();}catch(e){} try{openProfile();}catch(e){} },2000));
+          if(etaEl)etaEl.innerHTML='Voici les accès de votre compte';
+          _dlvTimers.push(setTimeout(function(){ try{closeDelivery();}catch(e){} try{showAccountDetail(order);}catch(e){} },1200));
         }else{
           if(etaEl)etaEl.innerHTML='Livraison effectuée';
           // Ouvre automatiquement la facture (si on a l'ID de commande)
@@ -7351,21 +7351,11 @@ function renderProfilePurchases(){
   });
   // 🛒 Comptes achetés entre particuliers (Orange Money / Wave) et confirmés
   (myMpBuys||[]).filter(function(o){return o.status==='confirmed';}).forEach(function(o){
-    var c=o.credentials||{};var hasCred=!!(c.login||c.password||c.notes);
-    var contact=(o.sellerContact||'').trim();
-    html+='<div class="set-row" style="align-items:flex-start" onclick="toggleAccCred(\'mp'+o.id+'\',event)">'
+    html+='<div class="set-row" style="align-items:flex-start" onclick="showMpDetail(\''+o.id+'\')">'
       +'<div class="set-ico">🛒</div>'
       +'<div class="set-txt"><div class="set-name">'+vEsc(o.listingTitle||'Compte acheté')+'</div>'
-      +'<div class="set-desc">✅ Acheté au vendeur — appuyez pour voir les détails</div>'
-      +'<div id="acccred-mp'+o.id+'" style="display:none;margin-top:8px;font-size:12.5px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;line-height:1.7">'
-        +(hasCred
-            ?('<div>📧 Email / Identifiant : <b>'+vEsc(c.login||'—')+'</b></div>'
-             +'<div>🔑 Mot de passe : <b>'+vEsc(c.password||'—')+'</b></div>'
-             +(c.notes?'<div>📝 Infos : <b>'+vEsc(c.notes)+'</b></div>':''))
-            :'<div style="color:var(--text3)">Le vendeur n\'a pas encore saisi les accès.</div>')
-        +(contact?'<div style="margin-top:6px">💬 Contact vendeur : <b>'+vEsc(contact)+'</b></div>':'')
-      +'</div>'
-      +'</div><span style="color:var(--text3)">›</span></div>';
+      +'<div class="set-desc">✅ Acheté au vendeur — appuyez pour voir les accès (avec bouton copier)</div></div>'
+      +'<span style="color:var(--text3)">›</span></div>';
   });
   if(!html)html='<p style="margin:0;font-size:12px;color:var(--text3)">Aucun achat pour le moment. Vos VPN et comptes achetés apparaîtront ici.</p>';
   el.innerHTML=html;
@@ -7535,6 +7525,46 @@ function openMpPay(id){
 }
 function closeMpPay(){var ov=document.getElementById('mp-pay-ov');if(ov)ov.style.display='none';}
 function mpCopy(t){try{navigator.clipboard.writeText(t);}catch(e){}showToast('📋 Copié : '+t);}
+// 🧾 Écran de DÉTAIL du compte livré (email, mot de passe, infos) avec boutons Copier.
+//    Utilisé à la fin de la livraison ET au clic sur un achat dans « Mes achats ».
+function showAccountDetail(o){
+  o=o||{};var c=o.credentials||{};
+  var ov=document.getElementById('acc-detail-ov');
+  if(!ov){
+    ov=document.createElement('div');ov.id='acc-detail-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.onclick=function(e){if(e.target===ov)ov.style.display='none';};
+    ov.innerHTML='<div id="acc-detail-card" style="background:var(--bg2,#0d1426);width:100%;max-width:480px;max-height:90vh;overflow:auto;border-radius:20px;padding:20px"></div>';
+    document.body.appendChild(ov);
+  }
+  var fields=[['📧','Email / Identifiant',c.login],['🔑','Mot de passe',c.password],['📝','Infos',c.notes],['💬','Contact vendeur',o.sellerContact]];
+  var html='<div style="text-align:center;margin-bottom:16px"><div style="font-size:42px">✅</div>'
+    +'<div style="font-weight:800;font-size:19px;margin-top:6px">Compte livré !</div>'
+    +'<div style="font-size:13px;color:var(--text2)">'+vEsc(o.listingTitle||'Votre compte')+'</div></div>';
+  fields.forEach(function(f,idx){
+    if(!f[2])return;
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px">'
+      +'<div style="min-width:0;flex:1"><div style="font-size:11px;color:var(--text3)">'+f[0]+' '+f[1]+'</div>'
+      +'<div style="font-weight:700;font-size:14px;word-break:break-all">'+vEsc(f[2])+'</div></div>'
+      +'<button id="acc-copy-'+idx+'" style="flex:0 0 auto;padding:8px 12px;border:none;border-radius:10px;font-weight:700;font-size:12px;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))">📋 Copier</button>'
+      +'</div>';
+  });
+  html+='<button class="btn-primary" style="width:100%;margin-top:8px" onclick="document.getElementById(\'acc-detail-ov\').style.display=\'none\'">Fermer</button>'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center">Vous retrouverez ces informations dans Mon profil → Mes achats.</div>';
+  document.getElementById('acc-detail-card').innerHTML=html;
+  // Boutons Copier (valeurs réelles via closure → aucun risque d'injection)
+  fields.forEach(function(f,idx){
+    if(!f[2])return;
+    var b=document.getElementById('acc-copy-'+idx);
+    if(b)b.onclick=function(){ mpCopy(f[2]); };
+  });
+  ov.style.display='flex';
+}
+// Ouvre le détail d'un achat entre particuliers depuis « Mes achats »
+function showMpDetail(id){
+  var o=(myMpBuys||[]).find(function(x){return x.id===id;});
+  if(o)showAccountDetail(o);
+}
 async function submitMpOrder(){
   if(!currentUser||!_mpAcc)return;
   var a=_mpAcc;
@@ -7606,7 +7636,7 @@ function loadMpOrders(){
             type:'account',link:'',refId:o.id});
           // 🚚 Confirmation EN DIRECT (le vendeur vient de confirmer) → écran de livraison 30 s
           if(ch.type==='modified'){
-            try{ showDeliveryProgress({id:o.id,_payLabel:'Orange Money / Wave',items:[{qty:1,name:(o.listingTitle||'Compte')}]},{sec:30,account:true}); }catch(e){}
+            try{ showDeliveryProgress(Object.assign({},o,{_payLabel:'Orange Money / Wave',items:[{qty:1,name:(o.listingTitle||'Compte')}]}),{sec:30,account:true}); }catch(e){}
           }
         }else if(o.status==='refused'){
           mpWriteBell('mpref_'+o.id,{icon:'❌',title:'Demande refusée',
