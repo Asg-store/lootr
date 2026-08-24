@@ -627,6 +627,10 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
       <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span> Messages clients
       <span class="cat-count" id="msg-unread-badge" style="margin-left:auto;background:var(--red);color:#fff;font-size:11px;padding:1px 7px;border-radius:99px;display:none">0</span>
     </div>
+    <div class="dr-item" data-pg="reports" onclick="drawerGo('reports')">
+      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M4 22V4h13l-2 4 2 4H6"/><line x1="4" y1="22" x2="4" y2="14"/></svg></span> Signalements
+      <span class="cat-count" id="rep-pending-badge" style="margin-left:auto;background:var(--red);color:#fff;font-size:11px;padding:1px 7px;border-radius:99px;display:none">0</span>
+    </div>
     <div class="dr-item" data-pg="rewards" onclick="drawerGo('rewards')">
       <span class="d-ico"><svg viewBox="0 0 24 24"><polygon points="6 3 18 3 22 9 12 22 2 9 6 3"/><line x1="2" y1="9" x2="22" y2="9"/><polyline points="6 3 12 9 18 3"/></svg></span> Récompenses & Plus
       <span class="cat-count" id="rw-pending-badge" style="margin-left:auto;background:var(--orange);color:#000;font-size:11px;padding:1px 7px;border-radius:99px;display:none">0</span>
@@ -1080,6 +1084,15 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
     </div>
     <div id="announce-list"><div class="list-empty"><div class="ico">📢</div><p>Aucune annonce</p></div></div>
   </div>
+</div>
+
+<!-- PAGE: SIGNALEMENTS -->
+<div class="page" id="pg-reports">
+  <div class="sec-head">
+    <span class="sec-title">🚩 Signalements d'annonces</span>
+    <button class="btn-add" onclick="loadReports()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Actualiser</button>
+  </div>
+  <div id="reports-list" style="padding:4px 2px"><p style="color:var(--text2);font-size:13px;padding:12px">Chargement…</p></div>
 </div>
 
 <!-- PAGE: COMPTES À VENDRE -->
@@ -2833,6 +2846,7 @@ function goTab(id){
   if(id==='rewards'){try{checkCronHealth();}catch(e){}try{loadPointsShopToggle();}catch(e){}try{loadArenaToggle();}catch(e){}}
   if(id==='logo'){ensureImgbbKey().then(renderImgbbKeyBox);}
   if(id==='accounts'){loadAccounts();aoFillGames();aoRenderThumbs();loadImgbbKey();}
+  if(id==='reports')loadReports();
   if(id==='messages')loadConversations();
   if(id==='games')loadGamesAdmin();
   if(id==='rewards')loadRewards();
@@ -3550,6 +3564,61 @@ async function publishOfficialAccount(){
   }catch(e){toast('❌ '+e.message,true);}
 }
 
+/* ═══════════ SIGNALEMENTS (reports) ═══════════ */
+async function loadReports(){
+  var el=document.getElementById('reports-list');if(!el)return;
+  el.innerHTML='<p style="color:var(--text2);font-size:13px;padding:12px">Chargement…</p>';
+  try{
+    var snap=await db.collection('reports').get();
+    var arr=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    // en attente d'abord, puis par date décroissante
+    arr.sort(function(a,b){
+      var pa=a.status==='pending'?0:1,pb=b.status==='pending'?0:1;
+      if(pa!==pb)return pa-pb;
+      var ta=(a.createdAt&&a.createdAt.toMillis)?a.createdAt.toMillis():0;
+      var tb=(b.createdAt&&b.createdAt.toMillis)?b.createdAt.toMillis():0;return tb-ta;
+    });
+    if(!arr.length){el.innerHTML='<p style="color:var(--text2);font-size:13px;padding:12px">Aucun signalement pour le moment. 👍</p>';return;}
+    el.innerHTML=arr.map(function(r){
+      var esc=function(s){return (''+(s==null?'':s)).replace(/</g,'&lt;');};
+      var d=r.createdAt&&r.createdAt.toDate?r.createdAt.toDate().toLocaleString('fr-FR'):'';
+      var done=r.status!=='pending';
+      return '<div style="background:var(--bg2);border:1px solid '+(done?'var(--border)':'#e11d1d')+';border-radius:14px;padding:14px;margin-bottom:12px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+          +'<div style="font-weight:800;font-size:14px">🚩 '+esc(r.reason||'Signalement')+'</div>'
+          +'<span style="font-size:11px;padding:2px 8px;border-radius:99px;'+(done?'background:var(--bg3);color:var(--text2)':'background:#e11d1d;color:#fff')+'">'+(done?'Traité':'En attente')+'</span>'
+        +'</div>'
+        +'<div style="font-size:13px;color:var(--text);margin-top:6px">Annonce : <b>'+esc(r.listingTitle||'—')+'</b></div>'
+        +(r.details?'<div style="font-size:12.5px;color:var(--text2);margin-top:4px;line-height:1.5">« '+esc(r.details)+' »</div>':'')
+        +'<div style="font-size:11.5px;color:var(--text3);margin-top:6px">Par '+esc(r.reporterName||'client')+(r.reporterEmail?(' · '+esc(r.reporterEmail)):'')+(d?(' · '+d):'')+'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
+          +'<button onclick="openAdminListing(\''+r.listingId+'\')" style="padding:7px 11px;border:1px solid var(--border);border-radius:9px;background:var(--bg3);color:var(--text);font-size:12px;font-weight:700">👁 Voir l\'annonce</button>'
+          +(done?'':'<button onclick="markReportDone(\''+r.id+'\')" style="padding:7px 11px;border:none;border-radius:9px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#052;font-size:12px;font-weight:700">✅ Marquer traité</button>')
+          +'<button onclick="deleteReportedListing(\''+r.listingId+'\',\''+r.id+'\')" style="padding:7px 11px;border:none;border-radius:9px;background:linear-gradient(135deg,#ff5a5a,#c0392b);color:#fff;font-size:12px;font-weight:700">🗑 Supprimer l\'annonce</button>'
+          +'<button onclick="deleteReport(\''+r.id+'\')" style="padding:7px 11px;border:1px solid var(--border);border-radius:9px;background:var(--bg3);color:var(--text2);font-size:12px;font-weight:700">Effacer</button>'
+        +'</div></div>';
+    }).join('');
+  }catch(e){el.innerHTML='<p style="color:var(--red);font-size:13px;padding:12px">Erreur : '+(e.message||e)+'</p>';}
+}
+function openAdminListing(id){
+  // Ouvre l'annonce concernée sur le site public dans un nouvel onglet
+  try{ window.open('index.html?open=marketplace&acc='+encodeURIComponent(id),'_blank'); }catch(e){}
+}
+async function markReportDone(id){
+  try{ await db.collection('reports').doc(id).set({status:'reviewed',reviewedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); toast('✅ Signalement traité'); loadReports(); }catch(e){toast('❌ '+e.message,true);}
+}
+async function deleteReport(id){
+  if(!confirm('Effacer ce signalement ?'))return;
+  try{ await db.collection('reports').doc(id).delete(); toast('Signalement effacé'); loadReports(); }catch(e){toast('❌ '+e.message,true);}
+}
+async function deleteReportedListing(listingId,reportId){
+  if(!confirm('Supprimer définitivement l\'annonce signalée ? Cette action est irréversible.'))return;
+  try{
+    if(listingId){ try{await db.collection('accounts').doc(listingId).delete();}catch(e){} }
+    if(reportId){ await db.collection('reports').doc(reportId).set({status:'reviewed',action:'listing_deleted',reviewedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); }
+    toast('🗑 Annonce supprimée'); loadReports();
+  }catch(e){toast('❌ '+e.message,true);}
+}
 async function loadAccounts(){
   const el=document.getElementById('accounts-list');
   try{
@@ -5233,6 +5302,12 @@ function startAdminBadges(){
       let tot=0;s.docs.forEach(d=>{tot+=(d.data().unreadAdmin||0);});
       const b=document.getElementById('msg-unread-badge');
       if(b){b.textContent=tot;b.style.display=tot>0?'inline-block':'none';}
+    },()=>{});
+  }catch(e){}
+  try{
+    db.collection('reports').where('status','==','pending').onSnapshot(s=>{
+      const b=document.getElementById('rep-pending-badge');
+      if(b){b.textContent=s.size;b.style.display=s.size>0?'inline-block':'none';}
     },()=>{});
   }catch(e){}
 }
