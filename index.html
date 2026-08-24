@@ -1886,11 +1886,11 @@ body.ios .pnotif .pn-ic{border-radius:11px}
     <div class="field"><label>Titre de l'annonce *</label><input id="sell-title" placeholder="Ex: Compte PUBG Conqueror + skins rares"/></div>
     <div class="f2">
       <div class="field"><label>Niveau</label><input id="sell-level" type="number" min="1" placeholder="65"/></div>
-      <div class="field"><label>Collection</label><input id="sell-rank" placeholder="Skins rares, personnages, rang…"/></div>
-    </div>
-    <div class="f2">
-      <div class="field"><label>Nb. de skins</label><input id="sell-skins" type="number" min="0" placeholder="40"/></div>
-      <div class="field"><label>UC / Diamants</label><input id="sell-uc" type="number" min="0" placeholder="1200"/></div>
+      <div class="field"><label>N° de Collection</label>
+        <select id="sell-rank" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text)">
+          <option value="">— Choisir —</option>
+        </select>
+      </div>
     </div>
     <div class="field"><label>Description</label><textarea id="sell-desc" rows="3" placeholder="Détails: skins, succès, infos complémentaires…"></textarea></div>
 
@@ -7883,8 +7883,6 @@ function editListing(id){
   document.getElementById('sell-game').value=a.game||'';
   document.getElementById('sell-level').value=a.level||'';
   document.getElementById('sell-rank').value=a.rank||'';
-  document.getElementById('sell-skins').value=a.skins||'';
-  document.getElementById('sell-uc').value=a.uc||'';
   document.getElementById('sell-desc').value=a.desc||'';
   document.getElementById('sell-price').value=(a.priceRaw!=null?a.priceRaw:(a.price||''));
   var _pcs=document.getElementById('sell-price-cur');if(_pcs)_pcs.value=a.priceCur||'eur';
@@ -7956,27 +7954,32 @@ function compressImage(file){return new Promise((res,rej)=>{
 function aiEstimatePrice(){
   const game=document.getElementById('sell-game').value;
   const level=+document.getElementById('sell-level').value||0;
-  const rank=(document.getElementById('sell-rank').value||'').toLowerCase();
-  const skins=+document.getElementById('sell-skins').value||0;
-  const uc=+document.getElementById('sell-uc').value||0;
+  const coll=+document.getElementById('sell-rank').value||0;   // n° de collection (1-101)
   const base={pubg:15,cod:12,ff:9,other:8}[game]||8;
-  let price=base+level*0.16+skins*0.65+uc*0.0045;
-  let mult=1,rk='Standard';
-  if(/(conqueror|grandmaster|heroic|heroïque|ace master|legend)/.test(rank)){mult=1.6;rk='Élite';}
-  else if(/(crown|diamond|ace|mythic|grand master)/.test(rank)){mult=1.3;rk='Élevé';}
-  else if(/(platinum|gold)/.test(rank)){mult=1.12;rk='Moyen';}
-  price=Math.max(5,price*mult);
+  let price=base+level*0.16+coll*0.55;   // plus la collection est haute, plus la valeur monte
+  price=Math.max(5,price);
   const low=(price*0.85).toFixed(0),high=(price*1.15).toFixed(0);
   document.getElementById('ai-price-box').style.display='block';
   document.getElementById('ai-price-val').textContent=`${fmtMoney(low)} – ${fmtMoney(high)}`;
   document.getElementById('ai-price-reason').innerHTML=
-    `Estimation basée sur : jeu <b>${(GAMES.find(g=>g.key===game)||{}).name||game}</b>, niveau <b>${level}</b>, <b>${skins}</b> skins, <b>${uc}</b> UC/💎, rang <b>${rk}</b> (×${mult}).<br>Prix conseillé : <b>~${fmtMoney(Math.round(price))}</b>.`;
+    `Estimation basée sur : jeu <b>${(GAMES.find(g=>g.key===game)||{}).name||game}</b>, niveau <b>${level}</b>, collection <b>${coll||'—'}</b>.<br>Prix conseillé : <b>~${fmtMoney(Math.round(price))}</b>.`;
   const pf=document.getElementById('sell-price');if(!pf.value)pf.value=Math.round(price);
   showToast('🤖 Prix estimé par l\'IA');
 }
 function toggleInstantFields(on){
   document.getElementById('sell-instant-fields').style.display=on?'block':'none';
 }
+// Remplit le sélecteur « N° de Collection » (1 à 101) pour les annonces
+(function fillCollectionSelect(){
+  function fill(){
+    var s=document.getElementById('sell-rank');
+    if(!s||s.dataset.filled)return;
+    var opts='<option value="">— Choisir —</option>';
+    for(var i=1;i<=101;i++)opts+='<option value="'+i+'">'+i+'</option>';
+    s.innerHTML=opts;s.dataset.filled='1';
+  }
+  if(document.readyState!=='loading')fill();else document.addEventListener('DOMContentLoaded',fill);
+})();
 async function submitAccount(){
   if(!currentUser){openAuthModal();return;}
   const title=document.getElementById('sell-title').value.trim();
@@ -7997,7 +8000,6 @@ async function submitAccount(){
       userId:currentUser.uid,userName:currentUser.displayName||currentUser.email.split('@')[0],userEmail:currentUser.email||'',
       game:document.getElementById('sell-game').value,title,price,priceCur:priceCur,priceRaw:priceRaw,
       level:+document.getElementById('sell-level').value||null,rank:document.getElementById('sell-rank').value.trim()||'',
-      skins:+document.getElementById('sell-skins').value||null,uc:+document.getElementById('sell-uc').value||null,
       desc:document.getElementById('sell-desc').value.trim()||'',contact:document.getElementById('sell-contact').value.trim()||'',
       omNumber:document.getElementById('sell-om').value.trim()||'',
       waveNumber:document.getElementById('sell-wave').value.trim()||'',
@@ -8023,7 +8025,7 @@ async function submitAccount(){
     }
     showToast(editListingId?'✅ Annonce modifiée — en attente de validation':'✅ Annonce envoyée pour validation !');
     editListingId=null;
-    ['sell-title','sell-level','sell-rank','sell-skins','sell-uc','sell-desc','sell-price','sell-contact','sell-om','sell-wave','sell-cred-login','sell-cred-pass','sell-cred-notes'].forEach(id=>document.getElementById(id).value='');
+    ['sell-title','sell-level','sell-rank','sell-desc','sell-price','sell-contact','sell-om','sell-wave','sell-cred-login','sell-cred-pass','sell-cred-notes'].forEach(id=>{var _e=document.getElementById(id);if(_e)_e.value='';});
     document.getElementById('sell-instant').checked=false;toggleInstantFields(false);
     sellMedia=[];renderSellMedia();document.getElementById('ai-price-box').style.display='none';
     btn.textContent='📤 Publier mon annonce';
