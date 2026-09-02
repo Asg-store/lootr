@@ -34,6 +34,34 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // 📹 Mode Daily.co : création/récupération d'une salle d'appel vidéo/vocal.
+  //    (fusionné ici pour rester sous la limite de 12 fonctions Vercel Hobby)
+  //    Requiert la variable d'environnement Vercel : DAILY_API_KEY
+  {
+    let _b = req.body;
+    if (typeof _b === 'string') { try { _b = JSON.parse(_b || '{}'); } catch (e) { _b = {}; } }
+    _b = _b || {};
+    if (_b.mode === 'daily-room') {
+      const KEY = process.env.DAILY_API_KEY;
+      if (!KEY) return res.status(500).json({ error: 'DAILY_API_KEY manquant (variable Vercel)' });
+      try {
+        let name = String(_b.room || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+        if (name.length < 3) name = 'lootr-' + Date.now();
+        const headers = { 'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json' };
+        let r = await fetch('https://api.daily.co/v1/rooms/' + encodeURIComponent(name), { headers });
+        if (r.status === 200) { const d = await r.json(); return res.status(200).json({ url: d.url, name: d.name }); }
+        const exp = Math.floor(Date.now() / 1000) + 2 * 60 * 60;
+        r = await fetch('https://api.daily.co/v1/rooms', {
+          method: 'POST', headers,
+          body: JSON.stringify({ name, privacy: 'public', properties: { exp, enable_screenshare: true, enable_chat: true, enable_knocking: false } })
+        });
+        const d = await r.json();
+        if (!r.ok) return res.status(500).json({ error: (d && (d.info || d.error)) || 'Création de la salle échouée' });
+        return res.status(200).json({ url: d.url, name: d.name });
+      } catch (e) { return res.status(500).json({ error: String((e && e.message) || e) }); }
+    }
+  }
+
   try {
     getApp();
     const db = admin.firestore();
