@@ -7938,31 +7938,33 @@ async function onSellFile(e){
   showToast('✓ Galerie mise à jour');
 }
 async function uploadSellMedia(file,item,isVid){
-  // 1) Firebase Storage (gère photos ET vidéos) si activé
-  if(storage){
+  if(isVid){
+    // 🎬 Vidéo → Supabase Storage directement (on n'utilise pas Firebase Storage)
     try{
-      const ref=storage.ref('accounts/'+(currentUser?currentUser.uid:'anon')+'/'+Date.now()+'_'+file.name.replace(/[^\w.]/g,'_'));
-      const url=await withTimeout(ref.put(file).then(s=>s.ref.getDownloadURL()),20000);
-      item.url=url;item.uploading=false;renderSellMedia();return;
-    }catch(e){}
-  }
-  // 2) Repli ImgBB pour les IMAGES → URL hébergée (jamais de base64 dans Firestore)
-  if(!isVid){
+      const vurl=await supabaseUploadVideo(file);
+      if(vurl){item.url=vurl;item.uploading=false;renderSellMedia();return;}
+    }catch(e){
+      // On AFFICHE l'erreur réelle pour diagnostiquer
+      showToast('❌ Vidéo : '+((e&&e.message)||'échec de l\'envoi'));
+    }
+  }else{
+    // 📷 Photo → ImgBB (URL hébergée, jamais de base64 dans Firestore)
     try{
       const url=await imgbbUploadClient(file);
       if(url){item.url=url;item.uploading=false;renderSellMedia();return;}
     }catch(e){}
-  }else{
-    // 2 bis) Vidéo → Supabase Storage (gratuit)
-    try{
-      const vurl=await supabaseUploadVideo(file);
-      if(vurl){item.url=vurl;item.uploading=false;renderSellMedia();return;}
-    }catch(e){}
+    // Repli Firebase Storage pour la photo, seulement s'il est activé
+    if(storage){
+      try{
+        const ref=storage.ref('accounts/'+(currentUser?currentUser.uid:'anon')+'/'+Date.now()+'_'+file.name.replace(/[^\w.]/g,'_'));
+        const url=await withTimeout(ref.put(file).then(s=>s.ref.getDownloadURL()),15000);
+        item.url=url;item.uploading=false;renderSellMedia();return;
+      }catch(e){}
+    }
   }
-  // 3) Échec d'hébergement : l'aperçu local reste affiché mais NE sera PAS enregistré
+  // Échec d'hébergement : l'aperçu local reste affiché mais NE sera PAS enregistré
   item.uploading=false;item.notHosted=true;
-  if(isVid)showToast('⚠️ Vidéo non envoyée — vérifiez la connexion et réessayez');
-  else showToast('⚠️ Photo non hébergée — réessayez');
+  if(!isVid)showToast('⚠️ Photo non hébergée — réessayez');
   renderSellMedia();
 }
 function withTimeout(promise,ms){return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);}
@@ -8054,7 +8056,7 @@ async function submitAccount(){
       },{merge:true});
     }
     showToast(editListingId?'✅ Annonce modifiée — en attente de validation':'✅ Annonce envoyée pour validation !');
-    if(_mediaDropped)setTimeout(function(){showToast('⚠️ '+_mediaDropped+' média(s) non hébergé(s) non enregistré(s). Activez Firebase Storage pour les vidéos.');},1600);
+    if(_mediaDropped)setTimeout(function(){showToast('⚠️ '+_mediaDropped+' média(s) non enregistré(s) car l\'envoi a échoué. Réessayez de les ajouter.');},1600);
     editListingId=null;
     ['sell-title','sell-level','sell-rank','sell-desc','sell-price','sell-contact','sell-om','sell-wave','sell-cred-login','sell-cred-pass','sell-cred-notes'].forEach(id=>{var _e=document.getElementById(id);if(_e)_e.value='';});
     document.getElementById('sell-instant').checked=false;toggleInstantFields(false);
