@@ -33,7 +33,7 @@
 <link rel="stylesheet" href="https://checkoutshopper-live.adyen.com/checkoutshopper/sdk/5.66.1/adyen.css" crossorigin="anonymous"/>
 <script src="https://checkoutshopper-live.adyen.com/checkoutshopper/sdk/5.66.1/adyen.js" crossorigin="anonymous"></script>
 <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
-<!-- 📹 Daily.co : appels vidéo & vocal (la clé secrète reste côté serveur /api/daily-room) -->
+<!-- 📹 Daily.co : appels vidéo & vocal (la clé secrète reste côté serveur (/api/send-push mode daily-room)) -->
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <!-- 😀 Emoji couleur 100% HORS-LIGNE : chaque emoji utilise la police emoji couleur
      de l'appareil (aucun fichier, aucun CDN, aucune dépendance internet). -->
@@ -7930,23 +7930,40 @@ async function onSellFile(e){
     let localUrl;
     try{localUrl=isVid?await fileToDataURL(file):await compressImage(file);}
     catch(err){showToast('❌ Impossible de lire le fichier');continue;}
-    const item={type:isVid?'video':'image',url:localUrl,uploading:!!storage};
+    const item={type:isVid?'video':'image',url:localUrl,uploading:true};
     sellMedia.push(item);renderSellMedia();
-    // 2) Envoi vers Firebase Storage en arrière-plan (ne bloque jamais l'affichage)
-    if(storage)uploadToStorage(file,item,isVid);
+    // 2) Hébergement en arrière-plan (Firebase Storage, sinon ImgBB pour les images)
+    uploadSellMedia(file,item,isVid);
   }
   showToast('✓ Galerie mise à jour');
 }
-async function uploadToStorage(file,item,isVid){
-  try{
-    const ref=storage.ref('accounts/'+(currentUser?currentUser.uid:'anon')+'/'+Date.now()+'_'+file.name.replace(/[^\w.]/g,'_'));
-    const url=await withTimeout(ref.put(file).then(s=>s.ref.getDownloadURL()),15000);
-    item.url=url; // on remplace l'aperçu local par l'URL hébergée
-  }catch(e){
-    // Échec/timeout : on garde l'aperçu local. Une vidéo lourde non hébergée peut ne pas être sauvegardée.
-    if(isVid&&file.size>900000)showToast('⚠️ Vidéo lourde : activez Firebase Storage pour la sauvegarder');
+async function uploadSellMedia(file,item,isVid){
+  // 1) Firebase Storage (gère photos ET vidéos) si activé
+  if(storage){
+    try{
+      const ref=storage.ref('accounts/'+(currentUser?currentUser.uid:'anon')+'/'+Date.now()+'_'+file.name.replace(/[^\w.]/g,'_'));
+      const url=await withTimeout(ref.put(file).then(s=>s.ref.getDownloadURL()),20000);
+      item.url=url;item.uploading=false;renderSellMedia();return;
+    }catch(e){}
   }
-  item.uploading=false;renderSellMedia();
+  // 2) Repli ImgBB pour les IMAGES → URL hébergée (jamais de base64 dans Firestore)
+  if(!isVid){
+    try{
+      const url=await imgbbUploadClient(file);
+      if(url){item.url=url;item.uploading=false;renderSellMedia();return;}
+    }catch(e){}
+  }else{
+    // 2 bis) Vidéo → Cloudinary (gratuit) si configuré dans l'admin
+    try{
+      const vurl=await cloudinaryUploadVideo(file);
+      if(vurl){item.url=vurl;item.uploading=false;renderSellMedia();return;}
+    }catch(e){}
+  }
+  // 3) Échec d'hébergement : l'aperçu local reste affiché mais NE sera PAS enregistré
+  item.uploading=false;item.notHosted=true;
+  if(isVid)showToast('⚠️ Vidéo : configurez Cloudinary (admin) pour l\'héberger');
+  else showToast('⚠️ Photo non hébergée — réessayez');
+  renderSellMedia();
 }
 function withTimeout(promise,ms){return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);}
 function fileToDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);});}
@@ -8000,6 +8017,14 @@ async function submitAccount(){
   const credPass=document.getElementById('sell-cred-pass').value.trim();
   if(instant&&(!credLogin||!credPass)){showToast('⚠️ Renseignez les identifiants pour la livraison automatique');return;}
   const btn=document.getElementById('sell-submit');btn.disabled=true;btn.textContent='⏳ Publication…';
+  // 🛡️ On n'enregistre QUE les médias hébergés (URL http). Un base64 (photo/vidéo non
+  //    hébergée) est trop lourd et fait planter Firestore → on l'exclut de la sauvegarde.
+  var _mediaDropped=0;
+  var _mediaSafe=sellMedia.map(function(m){return {type:m.type,url:m.url};}).filter(function(m){
+    var hosted=typeof m.url==='string' && /^https?:\/\//i.test(m.url);
+    if(!hosted)_mediaDropped++;
+    return hosted;
+  });
   try{
     const data={
       userId:currentUser.uid,userName:currentUser.displayName||currentUser.email.split('@')[0],userEmail:currentUser.email||'',
@@ -8008,7 +8033,7 @@ async function submitAccount(){
       desc:document.getElementById('sell-desc').value.trim()||'',contact:document.getElementById('sell-contact').value.trim()||'',
       omNumber:document.getElementById('sell-om').value.trim()||'',
       waveNumber:document.getElementById('sell-wave').value.trim()||'',
-      media:sellMedia.map(m=>({type:m.type,url:m.url})),
+      media:_mediaSafe,
       instantDelivery:instant,
       status:'pending' // (re)validation par un admin
     };
@@ -8029,6 +8054,7 @@ async function submitAccount(){
       },{merge:true});
     }
     showToast(editListingId?'✅ Annonce modifiée — en attente de validation':'✅ Annonce envoyée pour validation !');
+    if(_mediaDropped)setTimeout(function(){showToast('⚠️ '+_mediaDropped+' média(s) non hébergé(s) non enregistré(s). Activez Firebase Storage pour les vidéos.');},1600);
     editListingId=null;
     ['sell-title','sell-level','sell-rank','sell-desc','sell-price','sell-contact','sell-om','sell-wave','sell-cred-login','sell-cred-pass','sell-cred-notes'].forEach(id=>{var _e=document.getElementById(id);if(_e)_e.value='';});
     document.getElementById('sell-instant').checked=false;toggleInstantFields(false);
@@ -8683,7 +8709,7 @@ function _openCallOverlay(url,videoOn){
 }
 function startCall(roomName,videoOn){
   showToast('📡 Connexion à l\'appel…');
-  fetch('/api/daily-room',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room:roomName})})
+  fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'daily-room',room:roomName})})
     .then(function(r){return r.json();})
     .then(function(d){
       if(!d||!d.url){showToast('❌ '+((d&&d.error)||'Appel indisponible'));return;}
@@ -8737,6 +8763,22 @@ async function sendChat(){
 }
 // Envoi d'une photo / vidéo / fichier dans le chat (client → admin)
 /* Upload d'image via ImgBB (clé partagée gérée par l'admin dans config/shop) */
+// 🎬 Upload d'une vidéo vers Cloudinary (gratuit) → renvoie l'URL hébergée.
+//    Config dans l'admin : config/shop.cloudinaryName + cloudinaryPreset (preset NON signé).
+function cloudinaryUploadVideo(file){
+  return new Promise(function(resolve,reject){
+    var name=(shopConfig&&shopConfig.cloudinaryName)||'';
+    var preset=(shopConfig&&shopConfig.cloudinaryPreset)||'';
+    if(!name||!preset){reject(new Error('Cloudinary non configuré'));return;}
+    var fd=new FormData();fd.append('file',file);fd.append('upload_preset',preset);
+    fetch('https://api.cloudinary.com/v1_1/'+encodeURIComponent(name)+'/video/upload',{method:'POST',body:fd})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d&&(d.secure_url||d.url))resolve(d.secure_url||d.url);
+        else reject(new Error((d&&d.error&&d.error.message)||'Cloudinary a refusé la vidéo'));
+      }).catch(reject);
+  });
+}
 function imgbbUploadClient(file){
   return new Promise(function(resolve,reject){
     var key=(shopConfig&&shopConfig.imgbbKey)||'';

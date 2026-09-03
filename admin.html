@@ -1135,6 +1135,13 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
           <button class="save-btn" style="margin-top:8px;background:linear-gradient(135deg,#00b0ff,#7c3aed)" onclick="saveImgbbKey()">🔑 Enregistrer ma clé ImgBB</button>
           <span class="hint">Firebase Storage exige un forfait payant : les photos passent par ImgBB (gratuit). Clé à récupérer sur imgbb.com/api.</span>
         </div>
+        <div id="cloudinary-box" style="margin:10px 0;padding:12px;border:1px solid var(--border);border-radius:12px">
+          <div style="font-weight:700;font-size:13px;margin-bottom:8px">🎬 Vidéos — Cloudinary (gratuit)</div>
+          <input class="inp" type="text" id="cfg-cloud-name" placeholder="Cloud name (ex: dxxxx)" style="margin-bottom:8px"/>
+          <input class="inp" type="text" id="cfg-cloud-preset" placeholder="Upload preset NON signé (ex: lootr_video)"/>
+          <button class="save-btn" style="margin-top:8px;background:linear-gradient(135deg,#00b0ff,#7c3aed)" onclick="saveCloudinary()">🎬 Enregistrer Cloudinary</button>
+          <span class="hint">Crée un compte gratuit sur cloudinary.com → Settings → Upload → « Add upload preset » en mode <b>Unsigned</b>. Colle ici le <b>Cloud name</b> et le nom du <b>preset</b>. Les vidéos des annonces seront hébergées gratuitement (25 Go).</span>
+        </div>
         <button class="save-btn" style="background:linear-gradient(135deg,#00b0ff,#7c3aed)" onclick="document.getElementById('ao-file').click()">📷 Choisir depuis la galerie</button>
         <div id="ao-thumbs" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
         <span class="hint">Vous pouvez sélectionner plusieurs photos. Max 4 Mo par image.</span>
@@ -1812,7 +1819,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
 
 <div id="toast">OK</div>
 
-<!-- 📹 Daily.co : appels vidéo & vocal (clé secrète côté serveur /api/daily-room) -->
+<!-- 📹 Daily.co : appels vidéo & vocal (clé secrète côté serveur (/api/send-push mode daily-room)) -->
 <script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -2849,7 +2856,7 @@ function goTab(id){
   if(id==='announce'){loadAnnounce();loadPromos();loadHotVideosAdmin();loadInviteConfig();}
   if(id==='rewards'){try{checkCronHealth();}catch(e){}try{loadPointsShopToggle();}catch(e){}try{loadArenaToggle();}catch(e){}}
   if(id==='logo'){ensureImgbbKey().then(renderImgbbKeyBox);}
-  if(id==='accounts'){loadAccounts();aoFillGames();aoRenderThumbs();loadImgbbKey();}
+  if(id==='accounts'){loadAccounts();aoFillGames();aoRenderThumbs();loadImgbbKey();loadCloudinaryCfg();}
   if(id==='reports')loadReports();
   if(id==='messages')loadConversations();
   if(id==='games')loadGamesAdmin();
@@ -3432,6 +3439,24 @@ async function saveImgbbKey(inputId){
     toast('✅ Clé ImgBB enregistrée — utilisable partout');
   }catch(e){toast('❌ '+e.message,true);}
 }
+// 🎬 Config Cloudinary (hébergement des vidéos d'annonces)
+async function loadCloudinaryCfg(){
+  try{
+    var d=await db.collection('config').doc('shop').get();
+    var c=(d.exists&&d.data())||{};
+    var n=document.getElementById('cfg-cloud-name');if(n)n.value=c.cloudinaryName||'';
+    var p=document.getElementById('cfg-cloud-preset');if(p)p.value=c.cloudinaryPreset||'';
+  }catch(e){}
+}
+async function saveCloudinary(){
+  var name=((document.getElementById('cfg-cloud-name')||{}).value||'').trim();
+  var preset=((document.getElementById('cfg-cloud-preset')||{}).value||'').trim();
+  if(!name||!preset){toast('❌ Renseignez le cloud name ET le preset',true);return;}
+  try{
+    await db.collection('config').doc('shop').set({cloudinaryName:name,cloudinaryPreset:preset},{merge:true});
+    toast('✅ Cloudinary enregistré — vidéos hébergées gratuitement');
+  }catch(e){toast('❌ '+e.message,true);}
+}
 async function aoUploadPhotos(e){
   var files=Array.prototype.slice.call(e.target.files||[]);
   e.target.value='';
@@ -3842,7 +3867,7 @@ function adminJoinCall(videoOn){
   if(!curConvUid){toast('Ouvrez une conversation d\'abord');return;}
   var room='chat-'+curConvUid;
   toast('📡 Connexion à l\'appel…');
-  fetch('/api/daily-room',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room:room})})
+  fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'daily-room',room:room})})
     .then(function(r){return r.json();})
     .then(function(d){ if(!d||!d.url){toast('❌ '+((d&&d.error)||'Appel indisponible'),true);return;} _admOpenCall(d.url,videoOn); })
     .catch(function(){toast('❌ Appel indisponible',true);});
