@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
       try {
         const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' + encodeURIComponent(KEY), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 500, temperature: 0.6 } })
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 320, temperature: 0.6 } })
         });
         const d = await r.json();
         let text = '';
