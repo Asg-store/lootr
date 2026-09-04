@@ -1129,22 +1129,19 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
 
       <div class="form-grp">
         <label>Photos &amp; Vidéo</label>
-        <input type="file" id="ao-file" accept="image/*" multiple style="display:none" onchange="aoUploadPhotos(event)"/>
+        <input type="file" id="ao-file" accept="image/*,video/*" multiple style="display:none" onchange="aoUploadPhotos(event)"/>
         <div id="ao-key-box" style="margin:10px 0">
           <input class="inp" type="text" id="ao-imgbb" placeholder="Clé API ImgBB (gratuite sur imgbb.com)"/>
           <button class="save-btn" style="margin-top:8px;background:linear-gradient(135deg,#00b0ff,#7c3aed)" onclick="saveImgbbKey()">🔑 Enregistrer ma clé ImgBB</button>
           <span class="hint">Firebase Storage exige un forfait payant : les photos passent par ImgBB (gratuit). Clé à récupérer sur imgbb.com/api.</span>
         </div>
-        <div id="cloudinary-box" style="margin:10px 0;padding:12px;border:1px solid var(--border);border-radius:12px">
-          <div style="font-weight:700;font-size:13px;margin-bottom:8px">🎬 Vidéos — Cloudinary (gratuit)</div>
-          <input class="inp" type="text" id="cfg-cloud-name" placeholder="Cloud name (ex: dxxxx)" style="margin-bottom:8px"/>
-          <input class="inp" type="text" id="cfg-cloud-preset" placeholder="Upload preset NON signé (ex: lootr_video)"/>
-          <button class="save-btn" style="margin-top:8px;background:linear-gradient(135deg,#00b0ff,#7c3aed)" onclick="saveCloudinary()">🎬 Enregistrer Cloudinary</button>
-          <span class="hint">Crée un compte gratuit sur cloudinary.com → Settings → Upload → « Add upload preset » en mode <b>Unsigned</b>. Colle ici le <b>Cloud name</b> et le nom du <b>preset</b>. Les vidéos des annonces seront hébergées gratuitement (25 Go).</span>
+        <div style="margin:10px 0;padding:12px;border:1px solid var(--border);border-radius:12px;display:flex;gap:8px;align-items:flex-start">
+          <span style="font-size:18px">🎬</span>
+          <div style="font-size:12px;color:var(--text2);line-height:1.5"><b>Vidéos activées</b> — hébergées automatiquement (Supabase, gratuit). Ajoute simplement une vidéo depuis la galerie ci-dessous, comme une photo.</div>
         </div>
-        <button class="save-btn" style="background:linear-gradient(135deg,#00b0ff,#7c3aed)" onclick="document.getElementById('ao-file').click()">📷 Choisir depuis la galerie</button>
+        <button class="save-btn" style="background:linear-gradient(135deg,#00b0ff,#7c3aed)" onclick="document.getElementById('ao-file').click()">📷🎬 Choisir photos / vidéo</button>
         <div id="ao-thumbs" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
-        <span class="hint">Vous pouvez sélectionner plusieurs photos. Max 4 Mo par image.</span>
+        <span class="hint">Plusieurs photos + 1 vidéo possibles. Photo : max 4 Mo · Vidéo : max 50 Mo.</span>
       </div>
 
       <div class="form-grp">
@@ -3457,17 +3454,40 @@ async function saveCloudinary(){
     toast('✅ Cloudinary enregistré — vidéos hébergées gratuitement');
   }catch(e){toast('❌ '+e.message,true);}
 }
+// 🎬 Supabase Storage pour les vidéos (bucket Lootr)
+var SUPA_URL='https://vnzvxxararinstgomcee.supabase.co';
+var SUPA_KEY='sb_publishable_alBM3uiambEatc5CqEcLDw_IlhXJRwy';
+var SUPA_BUCKET='Lootr';
+function supaUploadVideo(file){
+  return new Promise(function(resolve,reject){
+    var ext=((file.name||'').split('.').pop()||'mp4').replace(/[^a-z0-9]/gi,'').toLowerCase()||'mp4';
+    var path='videos/admin_'+Date.now()+'.'+ext;
+    fetch(SUPA_URL+'/storage/v1/object/'+SUPA_BUCKET+'/'+path,{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':file.type||'video/mp4','x-upsert':'true'},
+      body:file
+    }).then(function(r){
+      if(r.ok)resolve(SUPA_URL+'/storage/v1/object/public/'+SUPA_BUCKET+'/'+path);
+      else r.text().then(function(t){reject(new Error('Supabase '+r.status+' '+String(t).slice(0,120)));});
+    }).catch(reject);
+  });
+}
 async function aoUploadPhotos(e){
   var files=Array.prototype.slice.call(e.target.files||[]);
   e.target.value='';
   if(!files.length)return;
-  if(!IMGBB_KEY){
-    toast('⚠️ Ajoutez d\'abord votre clé ImgBB',true);
-    aoToggleKeyBox();
-    return;
-  }
   for(var i=0;i<files.length;i++){
     var f=files[i];
+    var isVid=(f.type||'').indexOf('video')===0;
+    if(isVid){
+      if(aoMedia.filter(function(m){return m.type==='video';}).length>=1){toast('⚠️ 1 seule vidéo autorisée',true);continue;}
+      if(f.size>50000000){toast('⚠️ Vidéo trop lourde (max 50 Mo)',true);continue;}
+      toast('⏳ Envoi de la vidéo…');
+      try{ var vurl=await supaUploadVideo(f); aoMedia.push({type:'video',url:vurl}); aoRenderThumbs(); }
+      catch(err){ toast('❌ Vidéo : '+(err.message||'échec'),true); }
+      continue;
+    }
+    if(!IMGBB_KEY){ toast('⚠️ Ajoutez d\'abord votre clé ImgBB',true); aoToggleKeyBox(); return; }
     if(f.size>30000000){toast('⚠️ '+f.name+' trop lourde (max 30 Mo)',true);continue;}
     toast('⏳ Envoi photo '+(i+1)+'/'+files.length+'…');
     try{
@@ -3480,7 +3500,7 @@ async function aoUploadPhotos(e){
     }
   }
   aoRenderThumbs();
-  if(aoMedia.length)toast('✅ '+aoMedia.length+' photo(s) prête(s)');
+  if(aoMedia.length)toast('✅ '+aoMedia.length+' média(s) prêt(s)');
 }
 function imgbbUpload(file){
   return new Promise(function(resolve,reject){
@@ -3506,10 +3526,13 @@ function imgbbUpload(file){
 function aoRenderThumbs(){
   var el=document.getElementById('ao-thumbs');if(!el)return;
   var th=aoMedia.map(function(m,i){
+    var inner=m.type==='video'
+      ?'<video src="'+m.url+'" muted preload="metadata" style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#fff;font-size:20px;text-shadow:0 1px 4px rgba(0,0,0,.6)">▶</div>'
+      :'<img src="'+m.url+'" style="width:100%;height:100%;object-fit:cover"/>';
     return '<div style="position:relative;width:96px;height:96px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--bg3)">'
-      +'<img src="'+m.url+'" style="width:100%;height:100%;object-fit:cover"/>'
+      +inner
       +'<button onclick="aoDelPhoto('+i+')" title="Retirer" style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,.72);color:#fff;border:0;border-radius:50%;width:24px;height:24px;line-height:24px;cursor:pointer;font-size:14px;padding:0">×</button>'
-      +'<span style="position:absolute;bottom:5px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;border-radius:6px;padding:1px 6px">'+(i+1)+'</span>'
+      +'<span style="position:absolute;bottom:5px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;border-radius:6px;padding:1px 6px">'+(m.type==='video'?'🎬':(i+1))+'</span>'
       +'</div>';
   }).join('');
   th+='<div onclick="document.getElementById(\'ao-file\').click()" '
