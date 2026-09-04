@@ -8629,13 +8629,15 @@ function subscribeChat(){
           if(!txt&&!hasMedia)return'';
           const side=(m.from==='admin'||m.from==='bot')?'admin':'user';
           const tag=m.from==='bot'?'<b style="display:block;font-size:10px;opacity:.7;margin-bottom:2px">🤖 Assistant LootR</b>':(m.from==='admin'?'<b style="display:block;font-size:10px;opacity:.7;margin-bottom:2px">👨‍💼 Admin</b>':'');
-          let body=txt?`<span class="msg-tx" dir="auto">${txt.replace(/</g,'&lt;')}</span>`:'';
+          let body=txt?`<span class="msg-tx" dir="auto">${fmtChatText(txt)}</span>`:'';
           if(hasMedia){const i=mIdx++;body+=chatMediaHTML(m.media,'chat-c',i);}
           // Le client peut supprimer ses propres messages
           const del=m.from==='user'?`<span class="msg-del" onclick="delMyMsg('${m._id}')" title="Supprimer">×</span>`:'';
           return`<div class="msg ${side} ${m.from==='user'?'deletable':''}">${del}${tag}${body}<span class="t">${fmtChatTime(m.createdAt)}</span></div>`;
         }).join('');
       }
+      // ⏳ Si l'assistant est en train de répondre, on ré-affiche la bulle « ••• »
+      if(_botTyping && !document.getElementById('chat-typing')){ el.insertAdjacentHTML('beforeend',_typingBubbleHTML()); }
       // 🌐 Traduit les messages dans la langue du client (si ≠ français)
       try{translateChatBubbles();}catch(e){}
       requestAnimationFrame(()=>{el.scrollTop=el.scrollHeight;});
@@ -8748,14 +8750,23 @@ async function sendChat(){
   }catch(e){showToast('❌ '+e.message);}
 }
 // Indicateur « l'assistant écrit… » (bulle temporaire)
-function appendChatTyping(){
-  removeChatTyping();
-  var el=document.getElementById('chat-msgs');if(!el)return;
-  var d=document.createElement('div');d.id='chat-typing';d.className='msg admin';
-  d.innerHTML='<b style="display:block;font-size:10px;opacity:.7;margin-bottom:2px">🤖 Assistant LootR</b><span class="typing-dots"><i></i><i></i><i></i></span>';
-  el.appendChild(d);el.scrollTop=el.scrollHeight;
+var _botTyping=false;
+// Formate le texte d'un message : échappe le HTML puis convertit le **gras** Markdown de l'IA
+function fmtChatText(t){
+  t=String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  t=t.replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>');   // **gras** → gras
+  t=t.replace(/\r?\n/g,'<br>');                    // sauts de ligne
+  return t;
 }
-function removeChatTyping(){var t=document.getElementById('chat-typing');if(t)t.remove();}
+function _typingBubbleHTML(){return '<div id="chat-typing" class="msg admin"><b style="display:block;font-size:10px;opacity:.7;margin-bottom:2px">🤖 Assistant LootR</b><span class="typing-dots"><i></i><i></i><i></i></span></div>';}
+function appendChatTyping(){
+  _botTyping=true;
+  var el=document.getElementById('chat-msgs');if(!el)return;
+  if(document.getElementById('chat-typing'))return;
+  el.insertAdjacentHTML('beforeend',_typingBubbleHTML());
+  el.scrollTop=el.scrollHeight;
+}
+function removeChatTyping(){_botTyping=false;var t=document.getElementById('chat-typing');if(t)t.remove();}
 // Envoi d'une photo / vidéo / fichier dans le chat (client → admin)
 /* Upload d'image via ImgBB (clé partagée gérée par l'admin dans config/shop) */
 // 🎬 Upload d'une vidéo vers Supabase Storage (gratuit) → renvoie l'URL publique.
