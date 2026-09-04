@@ -8736,10 +8736,19 @@ async function sendChat(){
     //    Tant que humanMode est actif, l'IA ne répond jamais. L'admin peut la réactiver via « Reprendre l'IA ».
     if(_chatHumanMode) return;
 
-    // 🤖 Sinon, l'assistant IA (Gemini) répond
+    // ⚡ RÉPONSE INSTANTANÉE (aucun réseau) basée sur le VRAI catalogue : prix d'un produit,
+    //    packs d'un jeu, comptes en vente… → répond en moins de 0,5 s, sans attendre le serveur.
+    try{
+      var _instant=aiCatalogAnswer(text);
+      if(_instant){ streamReveal(uid,_instant); return; }
+    }catch(e){}
+
+    // 🤖 Sinon, l'assistant IA (Gemini) répond — on lui envoie AUSSI le catalogue complet
+    //    pour qu'il connaisse tous les jeux, produits et prix de la boutique.
     var _hist=(_chatMsgs||[]).slice(-8).map(function(m){return {role:(m.from==='bot'||m.from==='admin')?'model':'user',text:(m.text||'')};}).filter(function(h){return h.text;});
+    var _catalog='';try{_catalog=aiBuildCatalog();}catch(e){_catalog='';}
     appendChatTyping();
-    fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'gemini',message:text,history:_hist})})
+    fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'gemini',message:text,history:_hist,catalog:_catalog})})
       .then(function(r){return r.json();})
       .then(function(d){
         var reply=(d&&d.reply)?d.reply:'';
@@ -9129,7 +9138,80 @@ var AI_INTENTS=[
   {k:['au revoir','bye','a plus','bonne journee','a bientot','ciao','bonne nuit'],
    r:function(){var n=aiClientName();return"À bientôt"+(n?(' '+n):'')+" 👋 Merci de votre visite sur LootR. Passez une excellente journée, et revenez quand vous voulez !";}}
 ];
+/* ═══════════ 🗂️ CATALOGUE VIVANT POUR L'ASSISTANT ═══════════
+   L'assistant connaît désormais TOUT ce qui est en vente dans l'app :
+   jeux, produits/recharges (avec prix), comptes de la Marketplace, moyens de paiement.
+   → il peut répondre au prix exact d'un pack, lister les offres d'un jeu, etc. */
+var AI_STOP={le:1,la:1,les:1,un:1,une:1,de:1,du:1,des:1,et:1,ou:1,je:1,tu:1,il:1,on:1,au:1,aux:1,ce:1,ca:1,cest:1,est:1,pour:1,avec:1,sur:1,mon:1,ma:1,mes:1,the:1,to:1,for:1,me:1,my:1,is:1,combien:1,coute:1,coutent:1,cout:1,prix:1,tarif:1,veux:1,voudrais:1,cherche:1,quel:1,quelle:1,avoir:1,acheter:1,svp:1,stp:1};
+// Construit un index compact du catalogue à envoyer à l'IA serveur (Gemini).
+function aiBuildCatalog(){
+  var lines=[];
+  try{var games=(GAMES||[]).map(function(g){return g.name;}).filter(Boolean);if(games.length)lines.push('JEUX: '+games.join(', '));}catch(e){}
+  try{
+    var prods=(allProducts||[]).slice(0,150).map(function(p){
+      var pr=fmtMoney(+p.price||0);var disc=(p.discount>0)?(' -'+p.discount+'%'):'';
+      var g=(GAMES||[]).find(function(x){return x.key===productGame(p);});
+      return (p.name||'Produit')+(g?(' ['+g.name+']'):'')+' = '+pr+disc;
+    });
+    if(prods.length)lines.push('PRODUITS/RECHARGES ('+prods.length+'): '+prods.join(' | '));
+  }catch(e){}
+  try{
+    var accs=(allAccounts||[]).filter(function(a){return a.status==='approved'||a.status==='sold';}).slice(0,40).map(function(a){
+      return (a.title||'Compte')+' ['+(a.game||'?')+'] = '+fmtMoney(+a.price||0)+((a.status==='sold')?' (vendu)':'');
+    });
+    if(accs.length)lines.push('COMPTES EN VENTE ('+accs.length+'): '+accs.join(' | '));
+  }catch(e){}
+  try{lines.push('PAIEMENT: '+aiPayList());}catch(e){}
+  return lines.join('\n');
+}
+// ⚡ Réponse INSTANTANÉE (aucun réseau) : cherche le produit / le jeu demandé dans le vrai
+//    catalogue et renvoie son prix ou la liste des offres. Renvoie '' si rien de sûr trouvé.
+function aiCatalogAnswer(msg){
+  var t=aiNorm(msg);var q=t.trim();
+  if(q.length<2)return '';
+  var toks=q.split(' ').filter(function(w){return w.length>=2 && !AI_STOP[w];});
+  if(!toks.length)return '';
+  var prods=(allProducts||[]);
+  // 1) Produit(s) qui correspondent le mieux aux mots de la question
+  var scored=[];
+  for(var i=0;i<prods.length;i++){
+    var p=prods[i];var name=aiNorm(p.name||'');var cat=aiNorm(p.category||'');
+    var g=(GAMES||[]).find(function(x){return x.key===productGame(p);});var gname=aiNorm((g&&g.name)||'');
+    var sc=0;
+    for(var j=0;j<toks.length;j++){var w=' '+toks[j];
+      if(name.indexOf(w)>=0)sc+=3; else if(gname.indexOf(w)>=0)sc+=2; else if(cat.indexOf(w)>=0)sc+=1;
+    }
+    if(sc>0)scored.push({p:p,sc:sc});
+  }
+  scored.sort(function(a,b){return b.sc-a.sc;});
+  if(scored.length && scored[0].sc>=3){
+    var top=scored.filter(function(x){return x.sc>=Math.max(3,scored[0].sc-2);}).slice(0,6);
+    if(top.length===1){
+      var p0=top[0].p;var pr=fmtMoney(+p0.price||0);
+      var old=(p0.originalPrice&&+p0.originalPrice>+p0.price)?(' au lieu de '+fmtMoney(+p0.originalPrice)):'';
+      var d=(p0.discount>0)?(' 🔥 -'+p0.discount+'%'):'';
+      return "🏷️ "+(p0.name||'Ce produit')+" : "+pr+old+d+".\nAjoutez-le au panier, entrez votre ID joueur puis payez ("+aiPayList()+"). Livraison en quelques minutes ⚡";
+    }
+    var list=top.map(function(x){return '• '+(x.p.name||'Produit')+' — '+fmtMoney(+x.p.price||0)+((x.p.discount>0)?(' 🔥 -'+x.p.discount+'%'):'');}).join('\n');
+    return "🏷️ Voici les offres qui correspondent :\n"+list+"\n\nDites-moi laquelle vous intéresse, je vous guide pour l'achat 👍";
+  }
+  // 2) Un jeu entier est cité → on liste ses packs
+  for(var gi=0;gi<(GAMES||[]).length;gi++){
+    var gg=GAMES[gi];var gn=aiNorm(gg.name||'').trim();var glab=aiNorm(gg.label||'').trim();
+    var hit=(gn && t.indexOf(' '+gn+' ')>=0) || (glab && glab.length>=2 && t.indexOf(' '+glab+' ')>=0);
+    if(hit){
+      var packs=(allProducts||[]).filter(function(p){return productGame(p)===gg.key;}).slice(0,8);
+      if(packs.length){
+        var pl=packs.map(function(p){return '• '+(p.name||'Pack')+' — '+fmtMoney(+p.price||0)+((p.discount>0)?(' 🔥 -'+p.discount+'%'):'');}).join('\n');
+        return (gg.emoji||'🎮')+" "+gg.name+" — nos offres :\n"+pl+"\n\nQuel pack souhaitez-vous ? Pensez à préparer votre ID joueur 🎮";
+      }
+    }
+  }
+  return '';
+}
 function aiAutoReply(msg){
+  // Le catalogue réel est prioritaire (prix/offres exacts, réponse instantanée)
+  try{var _c=aiCatalogAnswer(msg);if(_c)return _c;}catch(e){}
   var t=aiNorm(msg);
   var best=null,bestScore=0;
   for(var i=0;i<AI_INTENTS.length;i++){
