@@ -884,6 +884,10 @@ footer{
 .msg{max-width:78%;padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.5;word-break:break-word}
 .msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-bottom-right-radius:5px}
 .msg.admin{align-self:flex-start;background:var(--bg3);border:1px solid var(--border);border-bottom-left-radius:5px}
+.typing-dots{display:inline-flex;gap:4px;align-items:center;padding:2px 0}
+.typing-dots i{width:7px;height:7px;border-radius:50%;background:var(--text3,#7a8aac);display:inline-block;animation:typing 1.2s infinite ease-in-out}
+.typing-dots i:nth-child(2){animation-delay:.2s}.typing-dots i:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
 .msg .t{font-size:9px;opacity:.65;margin-top:4px;display:block}
 .chat-input-bar{flex-shrink:0;display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);
   background:var(--bg2);padding-bottom:calc(12px + env(safe-area-inset-bottom))}
@@ -8271,7 +8275,7 @@ function maybeShowAnnounceBanner(n){
 function dismissAnnounce(){document.getElementById('announce-banner').classList.remove('show');if(window._lastAnnounceT)localStorage.setItem('nex-banner-seen',window._lastAnnounceT);}
 
 /* ─── CHAT ADMIN <-> CLIENT ─── */
-let chatUnsub=null,_chatMsgCount=0,_adminJoined=false;
+let chatUnsub=null,_chatMsgCount=0,_adminJoined=false,_chatMsgs=[],_chatHumanMode=false,_chatDocUnsub=null;
 
 
 
@@ -8606,9 +8610,13 @@ function loadChatAds(){
 }
 function subscribeChat(){
   if(chatUnsub)chatUnsub();_chatMsgCount=0;_adminJoined=false;
+  // Suit l'état « mode humain » (le client a demandé un administrateur)
+  if(_chatDocUnsub)_chatDocUnsub();
+  _chatDocUnsub=db.collection('chats').doc(currentUser.uid).onSnapshot(function(d){var x=(d.exists&&d.data())||{};_chatHumanMode=!!x.humanMode;});
   chatUnsub=db.collection('chats').doc(currentUser.uid).collection('messages').orderBy('createdAt','asc')
     .onSnapshot(snap=>{
       const msgs=snap.docs.map(d=>({_id:d.id,...d.data()}));const el=document.getElementById('chat-msgs');
+      _chatMsgs=msgs;
       _adminJoined=msgs.some(m=>m.from==='admin');
       regMedia('chat-c',msgs.filter(m=>m.media&&m.media.url).map(m=>m.media));
       if(!msgs.length){el.innerHTML=`<div class="chat-empty">Démarrez la conversation avec l'équipe 👋</div>`;}
@@ -8704,21 +8712,49 @@ async function sendChat(){
       unreadAdmin:firebase.firestore.FieldValue.increment(1)
     },{merge:true});
     await db.collection('chats').doc(uid).collection('messages').add({from:'user',text,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    // 🤖 L'IA répond automatiquement quand l'administrateur est HORS LIGNE.
-    //    (Si l'admin est en ligne, il répond lui-même en direct → pas de réponse auto.)
-    if(!_adminIsOnline){
-      var reply;
-      try{ reply=aiAutoReply(text); }catch(err){ reply=''; }
-      if(!reply)reply="Merci pour votre message ✅ Un administrateur vous répondra dès son retour en ligne.\n\nEn attendant je peux vous renseigner sur : prix, paiement, livraison, ID joueur, VPN, points, portefeuille, vente de compte…";
-      setTimeout(function(){
-        db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(e){
-          // Nouvel essai unique en cas d'échec réseau, pour ne jamais laisser le client sans réponse
-          setTimeout(function(){db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});},1500);
-        });
-      },700);
+
+    // 🙋 Le client demande un humain / administrateur → on bascule en "mode humain"
+    var _low=' '+text.toLowerCase().replace(/[^a-zàâçéèêëîïôûùüÿñæœ0-9\s]/gi,' ')+' ';
+    var _wantsHuman=/\b(admin|administrateur|humain|conseiller|agent|assistance humaine|vraie personne|parler a quelqu un|quelqu un|responsable|support humain)\b/.test(_low);
+    if(_wantsHuman && !_adminJoined){
+      db.collection('chats').doc(uid).set({humanMode:true},{merge:true}).catch(function(){});
+      _chatHumanMode=true;
+      var ackMsg="🙋 D'accord ! Je transmets votre demande à un administrateur. Il vous répondra ici même dès que possible. Vous pouvez continuer à écrire votre question en attendant.";
+      setTimeout(function(){db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:ackMsg,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});},500);
+      return;
     }
+    // 👨‍💼 Un administrateur gère déjà la conversation (ou le client a demandé un humain) → l'IA se tait
+    if(_chatHumanMode || _adminJoined) return;
+
+    // 🤖 Sinon, l'assistant IA (Gemini) répond
+    var _hist=(_chatMsgs||[]).slice(-8).map(function(m){return {role:(m.from==='bot'||m.from==='admin')?'model':'user',text:(m.text||'')};}).filter(function(h){return h.text;});
+    appendChatTyping();
+    fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'gemini',message:text,history:_hist})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        removeChatTyping();
+        var reply=(d&&d.reply)?d.reply:'';
+        if(!reply){ try{reply=aiAutoReply(text);}catch(e){reply='';} }
+        if(!reply)reply="Merci pour votre message ✅ Je peux vous renseigner sur : prix, paiement, livraison, ID joueur, VPN, points, portefeuille, vente de compte. Pour parler à un administrateur, tapez « admin ».";
+        db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+      })
+      .catch(function(){
+        removeChatTyping();
+        var reply;try{reply=aiAutoReply(text);}catch(e){reply='';}
+        if(!reply)reply="Merci pour votre message ✅ Un instant… Pour parler à un administrateur, tapez « admin ».";
+        db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+      });
   }catch(e){showToast('❌ '+e.message);}
 }
+// Indicateur « l'assistant écrit… » (bulle temporaire)
+function appendChatTyping(){
+  removeChatTyping();
+  var el=document.getElementById('chat-msgs');if(!el)return;
+  var d=document.createElement('div');d.id='chat-typing';d.className='msg admin';
+  d.innerHTML='<b style="display:block;font-size:10px;opacity:.7;margin-bottom:2px">🤖 Assistant LootR</b><span class="typing-dots"><i></i><i></i><i></i></span>';
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+function removeChatTyping(){var t=document.getElementById('chat-typing');if(t)t.remove();}
 // Envoi d'une photo / vidéo / fichier dans le chat (client → admin)
 /* Upload d'image via ImgBB (clé partagée gérée par l'admin dans config/shop) */
 // 🎬 Upload d'une vidéo vers Supabase Storage (gratuit) → renvoie l'URL publique.
