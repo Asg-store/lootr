@@ -8734,6 +8734,7 @@ async function sendChat(){
       .then(function(d){
         removeChatTyping();
         var reply=(d&&d.reply)?d.reply:'';
+        if(!reply && d && d.err){ try{showToast('⚠️ IA: '+d.err);}catch(e){} }
         if(!reply){ try{reply=aiAutoReply(text);}catch(e){reply='';} }
         if(!reply)reply="Merci pour votre message ✅ Je peux vous renseigner sur : prix, paiement, livraison, ID joueur, VPN, points, portefeuille, vente de compte. Pour parler à un administrateur, tapez « admin ».";
         db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
