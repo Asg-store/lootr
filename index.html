@@ -1561,7 +1561,7 @@ body.ios .pnotif .pn-ic{border-radius:11px}
 #screen-ad-overlay{position:fixed;inset:0;z-index:2800;display:none;align-items:center;justify-content:center;background:rgba(5,7,14,.96);padding:22px}
 #screen-ad-overlay.open{display:flex;animation:ndFade .25s ease}
 #screen-ad-overlay .sa-card{width:100%;max-width:420px;background:var(--card,#0f1830);border:1px solid var(--border,#1e2d4a);border-radius:22px;overflow:hidden;text-align:center}
-#screen-ad-overlay img{width:100%;max-height:280px;object-fit:cover;display:block}
+#screen-ad-overlay img,#screen-ad-overlay video{width:100%;max-height:300px;object-fit:cover;display:block;background:#000}
 #screen-ad-overlay .sa-in{padding:16px 18px 20px}
 #screen-ad-overlay .sa-tag{font-size:10px;letter-spacing:1px;color:var(--text3);margin-bottom:6px}
 #screen-ad-overlay .sa-t{font-weight:800;font-size:17px}
@@ -1573,6 +1573,7 @@ body.ios .pnotif .pn-ic{border-radius:11px}
 <div id="screen-ad-overlay">
   <span class="sa-cnt"><b id="sa-count">15</b>s</span>
   <div class="sa-card">
+    <video id="sa-video" playsinline muted loop preload="auto" style="display:none"></video>
     <img id="sa-img" alt=""/>
     <div class="sa-in">
       <div class="sa-tag">📢 PUBLICITÉ</div>
@@ -4028,7 +4029,7 @@ function loadScreenAds(){
 function maybeShowScreenAd(context){
   // Pool = pubs admin + comptes sponsorisés (Booster)
   var pool=_screenAds.slice();
-  try{(allAccounts||[]).forEach(function(a){var until=(a.promotedUntil&&a.promotedUntil.toMillis)?a.promotedUntil.toMillis():0;if(a.promoted&&a.status==='approved'&&until>Date.now()){pool.push({title:a.title||'Compte à vendre',body:'💰 '+fmtMoney(+a.price||0)+' — Compte sponsorisé sur la Marketplace',image:(a.media&&a.media[0]&&a.media[0].type!=='video')?a.media[0].url:'',targetType:'account',targetId:a.id,seconds:15});}});}catch(e){}
+  try{(allAccounts||[]).forEach(function(a){var until=(a.promotedUntil&&a.promotedUntil.toMillis)?a.promotedUntil.toMillis():0;if(a.promoted&&a.status==='approved'&&until>Date.now()){var _vid=(a.media||[]).find(function(m){return m.type==='video';});var _img=(a.media||[]).find(function(m){return m.type==='image';});pool.push({title:a.title||'Compte à vendre',body:'💰 '+fmtMoney(+a.price||0)+' — Compte sponsorisé sur la Marketplace',image:_img?_img.url:'',video:_vid?_vid.url:'',targetType:'account',targetId:a.id,seconds:15});}});}catch(e){}
   if(!pool.length)return;
   var last=+localStorage.getItem('asg-ad-last')||0;
   var mins=(shopConfig&&(+shopConfig.adIntervalHours||0)*60+(+shopConfig.adIntervalMinutes||0))||120; // défaut 2h
@@ -4041,8 +4042,16 @@ function showScreenAd(ad){
   localStorage.setItem('asg-ad-last',String(Date.now()));
   var ov=document.getElementById('screen-ad-overlay');if(!ov)return;
   var secs=+ad.seconds||(ad.targetType==='vpn'?10:15);
-  document.getElementById('sa-img').style.display=ad.image?'block':'none';
-  if(ad.image)document.getElementById('sa-img').src=ad.image;
+  var vEl=document.getElementById('sa-video');
+  var iEl=document.getElementById('sa-img');
+  // 🎬 Si l'annonce sponsorisée a une vidéo → on l'affiche et on la lit automatiquement (muette, en boucle)
+  if(ad.video){
+    if(iEl)iEl.style.display='none';
+    if(vEl){vEl.style.display='block';vEl.src=ad.video;vEl.muted=true;try{vEl.currentTime=0;}catch(e){}var _p=vEl.play();if(_p&&_p.catch)_p.catch(function(){});}
+  }else{
+    if(vEl){try{vEl.pause();}catch(e){}vEl.removeAttribute('src');vEl.style.display='none';}
+    if(iEl){iEl.style.display=ad.image?'block':'none';if(ad.image)iEl.src=ad.image;}
+  }
   document.getElementById('sa-title').textContent=ad.title||'Publicité';
   document.getElementById('sa-body').textContent=ad.body||'';
   var btn=document.getElementById('sa-view');
@@ -4064,7 +4073,7 @@ function showScreenAd(ad){
     if(s<=0){clearInterval(_adTimer);_adTimer=null;closeScreenAd();}
   },1000);
 }
-function closeScreenAd(){if(_adTimer){clearInterval(_adTimer);_adTimer=null;}var ov=document.getElementById('screen-ad-overlay');if(ov)ov.classList.remove('open');}
+function closeScreenAd(){if(_adTimer){clearInterval(_adTimer);_adTimer=null;}var v=document.getElementById('sa-video');if(v){try{v.pause();}catch(e){}v.removeAttribute('src');}var ov=document.getElementById('screen-ad-overlay');if(ov)ov.classList.remove('open');}
 
 /* ─── Orange Money : numéro à copier ─── */
 const OM_NUMBER='+22382131418';
