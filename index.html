@@ -8729,10 +8729,8 @@ async function sendChat(){
       setTimeout(function(){db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:ackMsg,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});},500);
       return;
     }
-    // 👨‍💼 L'IA se tait UNIQUEMENT si un administrateur gère activement (demande d'humain OU admin
-    //    déjà intervenu) ET qu'il est EN LIGNE. Dès que l'admin est hors ligne, l'IA reprend la main
-    //    pour ne jamais laisser le client sans réponse.
-    if((_chatHumanMode || _adminJoined) && _adminIsOnline) return;
+    // 👨‍💼 Un administrateur gère déjà la conversation (ou le client a demandé un humain) → l'IA se tait
+    if(_chatHumanMode || _adminJoined) return;
 
     // 🤖 Sinon, l'assistant IA (Gemini) répond
     var _hist=(_chatMsgs||[]).slice(-8).map(function(m){return {role:(m.from==='bot'||m.from==='admin')?'model':'user',text:(m.text||'')};}).filter(function(h){return h.text;});
@@ -8740,18 +8738,16 @@ async function sendChat(){
     fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'gemini',message:text,history:_hist})})
       .then(function(r){return r.json();})
       .then(function(d){
-        removeChatTyping();
         var reply=(d&&d.reply)?d.reply:'';
         if(!reply && d && d.err){ try{showToast('⚠️ IA: '+d.err);}catch(e){} }
         if(!reply){ try{reply=aiAutoReply(text);}catch(e){reply='';} }
         if(!reply)reply="Merci pour votre message ✅ Je peux vous renseigner sur : prix, paiement, livraison, ID joueur, VPN, points, portefeuille, vente de compte. Pour parler à un administrateur, tapez « admin ».";
-        db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+        streamReveal(uid,reply);   // ✨ effet mot par mot
       })
       .catch(function(){
-        removeChatTyping();
         var reply;try{reply=aiAutoReply(text);}catch(e){reply='';}
         if(!reply)reply="Merci pour votre message ✅ Un instant… Pour parler à un administrateur, tapez « admin ».";
-        db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+        streamReveal(uid,reply);
       });
   }catch(e){showToast('❌ '+e.message);}
 }
