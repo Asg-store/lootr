@@ -49,6 +49,15 @@ module.exports = async (req, res) => {
         + "IMPORTANT : réponds TOUJOURS de façon TRÈS COURTE (2 à 3 phrases maximum), va droit au but, dans la langue du client, poliment. Pas de longues listes. Un ou deux emojis max. "
         + "Tu ne peux PAS accéder au compte du client ni voir ses commandes. Ne promets jamais de remboursement ou d'action que seul un humain peut faire. "
         + "Si le client veut parler à un vrai conseiller / administrateur / humain, ou pour un litige/paiement bloqué/remboursement, invite-le à taper « admin ».";
+      // 🗂️ Catalogue réel (jeux + produits + prix) transmis par l'app : l'IA doit s'appuyer DESSUS.
+      const cat = String((_b && _b.catalog) || '').slice(0, 6000);
+      const sysFull = cat
+        ? (sys + "\n\n=== CATALOGUE ACTUEL DE LA BOUTIQUE (source de vérité) ===\n" + cat
+           + "\n=== FIN CATALOGUE ===\n"
+           + "Réponds en te basant UNIQUEMENT sur ce catalogue pour les noms de produits, jeux et PRIX. "
+           + "Cite le nom exact et le prix exact indiqués ci-dessus. N'invente JAMAIS un prix ni un produit. "
+           + "Si le produit demandé n'apparaît pas dans le catalogue, dis-le clairement et propose l'offre la plus proche qui existe.")
+        : sys;
       const history = Array.isArray(_b.history) ? _b.history.slice(-6) : [];
       const contents = [];
       history.forEach(function (h) {
@@ -56,7 +65,7 @@ module.exports = async (req, res) => {
         contents.push({ role: (h.role === 'bot' || h.role === 'model') ? 'model' : 'user', parts: [{ text: t }] });
       });
       contents.push({ role: 'user', parts: [{ text: String(_b.message || '').slice(0, 1500) }] });
-      const _body = JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 180, temperature: 0.5 } });
+      const _body = JSON.stringify({ systemInstruction: { parts: [{ text: sysFull }] }, contents: contents, generationConfig: { maxOutputTokens: 220, temperature: 0.4 } });
       // On essaie le modèle le PLUS RAPIDE d'abord ; repli sur un modèle connu-stable si indisponible.
       const MODELS = ['gemini-flash-lite-latest', 'gemini-3.6-flash', 'gemini-flash-latest'];
       let lastErr = '';
