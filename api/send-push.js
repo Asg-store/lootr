@@ -46,31 +46,35 @@ module.exports = async (req, res) => {
       const sys = "Tu es l'assistant virtuel de LootR, une application de recharges de jeux et marketplace. "
         + "LootR propose : recharges (UC PUBG Mobile, diamants Free Fire, CP Call of Duty, etc.), vente de comptes de jeu entre particuliers (Marketplace), une Boutique VPN, des points de fidélité, un portefeuille LootR, et un système de parrainage. "
         + "Moyens de paiement : Orange Money, Wave, PayPal, carte bancaire, et le portefeuille LootR. Après paiement validé, la livraison est automatique et rapide (UC/diamants livrés sur l'ID joueur ; identifiants de compte remis dans l'app). "
-        + "Réponds TOUJOURS dans la langue du client, de façon courte, claire, polie et amicale (2 à 5 phrases max). Utilise quelques emojis avec parcimonie. "
-        + "Tu ne peux PAS accéder au compte du client ni voir ses commandes en temps réel. Ne promets jamais de remboursement ou d'action que seul un humain peut faire. "
-        + "Si le client veut parler à un vrai conseiller / administrateur / humain, ou si sa demande dépasse tes capacités (litige, paiement bloqué, remboursement, problème de compte), invite-le à taper « admin » pour être mis en relation avec un administrateur.";
-      const history = Array.isArray(_b.history) ? _b.history.slice(-8) : [];
+        + "IMPORTANT : réponds TOUJOURS de façon TRÈS COURTE (2 à 3 phrases maximum), va droit au but, dans la langue du client, poliment. Pas de longues listes. Un ou deux emojis max. "
+        + "Tu ne peux PAS accéder au compte du client ni voir ses commandes. Ne promets jamais de remboursement ou d'action que seul un humain peut faire. "
+        + "Si le client veut parler à un vrai conseiller / administrateur / humain, ou pour un litige/paiement bloqué/remboursement, invite-le à taper « admin ».";
+      const history = Array.isArray(_b.history) ? _b.history.slice(-6) : [];
       const contents = [];
       history.forEach(function (h) {
-        var t = String((h && h.text) || '').slice(0, 800); if (!t) return;
+        var t = String((h && h.text) || '').slice(0, 600); if (!t) return;
         contents.push({ role: (h.role === 'bot' || h.role === 'model') ? 'model' : 'user', parts: [{ text: t }] });
       });
-      contents.push({ role: 'user', parts: [{ text: String(_b.message || '').slice(0, 2000) }] });
-      try {
-        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' + encodeURIComponent(KEY), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 320, temperature: 0.6 } })
-        });
-        const d = await r.json();
-        let text = '';
-        try { text = (((d.candidates || [])[0] || {}).content || {}).parts.map(function (p) { return p.text || ''; }).join(''); } catch (e) { text = ''; }
-        if (!text) {
-          var em = '';
-          try { em = (d && d.error && d.error.message) ? d.error.message : ('HTTP ' + r.status); } catch (e) { em = 'HTTP ' + r.status; }
-          return res.status(200).json({ reply: '', err: 'Gemini: ' + String(em).slice(0, 160) });
-        }
-        return res.status(200).json({ reply: text.trim() });
-      } catch (e) { return res.status(200).json({ reply: '', err: 'Exception: ' + String((e && e.message) || e).slice(0, 120) }); }
+      contents.push({ role: 'user', parts: [{ text: String(_b.message || '').slice(0, 1500) }] });
+      const _body = JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 180, temperature: 0.5 } });
+      // On essaie le modèle le PLUS RAPIDE d'abord ; repli sur un modèle connu-stable si indisponible.
+      const MODELS = ['gemini-flash-lite-latest', 'gemini-3.6-flash', 'gemini-flash-latest'];
+      let lastErr = '';
+      for (let mi = 0; mi < MODELS.length; mi++) {
+        try {
+          const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODELS[mi] + ':generateContent?key=' + encodeURIComponent(KEY), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: _body
+          });
+          const d = await r.json();
+          let text = '';
+          try { text = (((d.candidates || [])[0] || {}).content || {}).parts.map(function (p) { return p.text || ''; }).join(''); } catch (e) { text = ''; }
+          if (text) return res.status(200).json({ reply: text.trim(), model: MODELS[mi] });
+          try { lastErr = (d && d.error && d.error.message) ? d.error.message : ('HTTP ' + r.status); } catch (e) { lastErr = 'HTTP ' + r.status; }
+          // Si le modèle est simplement indisponible/introuvable → on essaie le suivant ; sinon on arrête.
+          if (!/not (found|available|supported)|is not|does not exist/i.test(lastErr)) break;
+        } catch (e) { lastErr = String((e && e.message) || e); }
+      }
+      return res.status(200).json({ reply: '', err: 'Gemini: ' + String(lastErr).slice(0, 160) });
     }
   }
 
