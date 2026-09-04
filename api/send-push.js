@@ -60,11 +60,19 @@ module.exports = async (req, res) => {
       // On essaie le modèle le PLUS RAPIDE d'abord ; repli sur un modèle connu-stable si indisponible.
       const MODELS = ['gemini-flash-lite-latest', 'gemini-3.6-flash', 'gemini-flash-latest'];
       let lastErr = '';
+      // ⏱️ Petit utilitaire : abandonne l'appel s'il dépasse `ms` ms → on tombe alors
+      //    tout de suite sur le repli local (réponse instantanée côté client).
+      const _fetchTimeout = function (url, opts, ms) {
+        const ctrl = new AbortController();
+        const id = setTimeout(function () { ctrl.abort(); }, ms);
+        return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+          .finally(function () { clearTimeout(id); });
+      };
       for (let mi = 0; mi < MODELS.length; mi++) {
         try {
-          const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODELS[mi] + ':generateContent?key=' + encodeURIComponent(KEY), {
+          const r = await _fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + MODELS[mi] + ':generateContent?key=' + encodeURIComponent(KEY), {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: _body
-          });
+          }, 6000);
           const d = await r.json();
           let text = '';
           try { text = (((d.candidates || [])[0] || {}).content || {}).parts.map(function (p) { return p.text || ''; }).join(''); } catch (e) { text = ''; }
