@@ -66,30 +66,39 @@ module.exports = async (req, res) => {
       });
       contents.push({ role: 'user', parts: [{ text: String(_b.message || '').slice(0, 1500) }] });
       const _body = JSON.stringify({ systemInstruction: { parts: [{ text: sysFull }] }, contents: contents, generationConfig: { maxOutputTokens: 220, temperature: 0.4 } });
-      // On essaie le modèle le PLUS RAPIDE d'abord ; repli sur un modèle connu-stable si indisponible.
-      const MODELS = ['gemini-flash-lite-latest', 'gemini-3.6-flash', 'gemini-flash-latest'];
+      // Modèles VALIDES, du plus rapide au plus stable. (« gemini-3.6-flash » n'existe pas → retiré.)
+      // Si un alias n'est pas dispo (404 rapide), on passe au suivant ; les 2.0/1.5 flash sont des valeurs sûres.
+      const MODELS = ['gemini-flash-lite-latest', 'gemini-2.0-flash', 'gemini-1.5-flash'];
       let lastErr = '';
-      // ⏱️ Petit utilitaire : abandonne l'appel s'il dépasse `ms` ms → on tombe alors
-      //    tout de suite sur le repli local (réponse instantanée côté client).
-      const _fetchTimeout = function (url, opts, ms) {
+      // ⏱️ Budget de temps GLOBAL partagé (les fonctions Vercel s'arrêtent vers 10 s) :
+      //    on ne dépasse jamais ~8,5 s au total, sinon on rend la main et le client
+      //    affiche aussitôt sa réponse locale instantanée.
+      const _deadline = Date.now() + 8500;
+      const _fetchTimeout = function (url, opts) {
+        const ms = Math.max(1200, _deadline - Date.now());   // temps restant (au moins 1,2 s)
         const ctrl = new AbortController();
         const id = setTimeout(function () { ctrl.abort(); }, ms);
         return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
           .finally(function () { clearTimeout(id); });
       };
       for (let mi = 0; mi < MODELS.length; mi++) {
+        if (Date.now() >= _deadline) break;                  // plus de temps → repli local
         try {
           const r = await _fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + MODELS[mi] + ':generateContent?key=' + encodeURIComponent(KEY), {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: _body
-          }, 6000);
+          });
           const d = await r.json();
           let text = '';
           try { text = (((d.candidates || [])[0] || {}).content || {}).parts.map(function (p) { return p.text || ''; }).join(''); } catch (e) { text = ''; }
           if (text) return res.status(200).json({ reply: text.trim(), model: MODELS[mi] });
           try { lastErr = (d && d.error && d.error.message) ? d.error.message : ('HTTP ' + r.status); } catch (e) { lastErr = 'HTTP ' + r.status; }
-          // Si le modèle est simplement indisponible/introuvable → on essaie le suivant ; sinon on arrête.
+          // Modèle indisponible/introuvable → on tente le suivant ; toute autre erreur → on arrête.
           if (!/not (found|available|supported)|is not|does not exist/i.test(lastErr)) break;
-        } catch (e) { lastErr = String((e && e.message) || e); }
+        } catch (e) {
+          // Timeout / abandon / réseau → inutile d'enchaîner les autres modèles (on perdrait du temps).
+          lastErr = String((e && e.message) || e);
+          break;
+        }
       }
       return res.status(200).json({ reply: '', err: 'Gemini: ' + String(lastErr).slice(0, 160) });
     }
