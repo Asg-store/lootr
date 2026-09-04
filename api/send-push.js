@@ -57,7 +57,7 @@ module.exports = async (req, res) => {
       });
       contents.push({ role: 'user', parts: [{ text: String(_b.message || '').slice(0, 2000) }] });
       try {
-        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(KEY), {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' + encodeURIComponent(KEY), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 500, temperature: 0.6 } })
         });
