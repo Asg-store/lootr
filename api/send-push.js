@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
     _b = _b || {};
     if (_b.mode === 'gemini') {
       const KEY = process.env.GEMINI_API_KEY;
-      if (!KEY) return res.status(200).json({ reply: '' });
+      if (!KEY) return res.status(200).json({ reply: '', err: 'GEMINI_API_KEY absente sur Vercel' });
       const sys = "Tu es l'assistant virtuel de LootR, une application de recharges de jeux et marketplace. "
         + "LootR propose : recharges (UC PUBG Mobile, diamants Free Fire, CP Call of Duty, etc.), vente de comptes de jeu entre particuliers (Marketplace), une Boutique VPN, des points de fidélité, un portefeuille LootR, et un système de parrainage. "
         + "Moyens de paiement : Orange Money, Wave, PayPal, carte bancaire, et le portefeuille LootR. Après paiement validé, la livraison est automatique et rapide (UC/diamants livrés sur l'ID joueur ; identifiants de compte remis dans l'app). "
@@ -64,8 +64,13 @@ module.exports = async (req, res) => {
         const d = await r.json();
         let text = '';
         try { text = (((d.candidates || [])[0] || {}).content || {}).parts.map(function (p) { return p.text || ''; }).join(''); } catch (e) { text = ''; }
-        return res.status(200).json({ reply: (text || '').trim() });
-      } catch (e) { return res.status(200).json({ reply: '' }); }
+        if (!text) {
+          var em = '';
+          try { em = (d && d.error && d.error.message) ? d.error.message : ('HTTP ' + r.status); } catch (e) { em = 'HTTP ' + r.status; }
+          return res.status(200).json({ reply: '', err: 'Gemini: ' + String(em).slice(0, 160) });
+        }
+        return res.status(200).json({ reply: text.trim() });
+      } catch (e) { return res.status(200).json({ reply: '', err: 'Exception: ' + String((e && e.message) || e).slice(0, 120) }); }
     }
   }
 
