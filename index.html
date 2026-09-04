@@ -888,6 +888,8 @@ footer{
 .typing-dots i{width:7px;height:7px;border-radius:50%;background:var(--text3,#7a8aac);display:inline-block;animation:typing 1.2s infinite ease-in-out}
 .typing-dots i:nth-child(2){animation-delay:.2s}.typing-dots i:nth-child(3){animation-delay:.4s}
 @keyframes typing{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+.stream-caret{display:inline-block;width:2px;height:1em;background:var(--text2,#8899b8);margin-left:2px;vertical-align:-2px;animation:caretBlink 1s steps(1) infinite}
+@keyframes caretBlink{50%{opacity:0}}
 .msg .t{font-size:9px;opacity:.65;margin-top:4px;display:block}
 .chat-input-bar{flex-shrink:0;display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);
   background:var(--bg2);padding-bottom:calc(12px + env(safe-area-inset-bottom))}
@@ -8638,6 +8640,8 @@ function subscribeChat(){
       }
       // ⏳ Si l'assistant est en train de répondre, on ré-affiche la bulle « ••• »
       if(_botTyping && !document.getElementById('chat-typing')){ el.insertAdjacentHTML('beforeend',_typingBubbleHTML()); }
+      // ✨ Si une réponse est en cours de "streaming", on ré-affiche la bulle en cours
+      if(_streamActive){ if(!document.getElementById('chat-stream'))el.insertAdjacentHTML('beforeend',_streamBubbleHTML()); }
       // 🌐 Traduit les messages dans la langue du client (si ≠ français)
       try{translateChatBubbles();}catch(e){}
       requestAnimationFrame(()=>{el.scrollTop=el.scrollHeight;});
@@ -8734,18 +8738,16 @@ async function sendChat(){
     fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'gemini',message:text,history:_hist})})
       .then(function(r){return r.json();})
       .then(function(d){
-        removeChatTyping();
         var reply=(d&&d.reply)?d.reply:'';
         if(!reply && d && d.err){ try{showToast('⚠️ IA: '+d.err);}catch(e){} }
         if(!reply){ try{reply=aiAutoReply(text);}catch(e){reply='';} }
         if(!reply)reply="Merci pour votre message ✅ Je peux vous renseigner sur : prix, paiement, livraison, ID joueur, VPN, points, portefeuille, vente de compte. Pour parler à un administrateur, tapez « admin ».";
-        db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+        streamReveal(uid,reply);   // ✨ effet mot par mot
       })
       .catch(function(){
-        removeChatTyping();
         var reply;try{reply=aiAutoReply(text);}catch(e){reply='';}
         if(!reply)reply="Merci pour votre message ✅ Un instant… Pour parler à un administrateur, tapez « admin ».";
-        db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+        streamReveal(uid,reply);
       });
   }catch(e){showToast('❌ '+e.message);}
 }
@@ -8767,6 +8769,41 @@ function appendChatTyping(){
   el.scrollTop=el.scrollHeight;
 }
 function removeChatTyping(){_botTyping=false;var t=document.getElementById('chat-typing');if(t)t.remove();}
+
+// ✨ Effet « streaming » : révèle la réponse mot par mot dans une bulle locale,
+//    puis enregistre le message final dans Firestore.
+var _streamActive=false,_streamText='',_streamTimer=null;
+function _streamBubbleHTML(){
+  return '<div id="chat-stream" class="msg admin"><b style="display:block;font-size:10px;opacity:.7;margin-bottom:2px">🤖 Assistant LootR</b>'
+    +'<span class="msg-tx" dir="auto">'+fmtChatText(_streamText)+'<span class="stream-caret"></span></span></div>';
+}
+function _streamRender(){
+  var el=document.getElementById('chat-msgs');if(!el)return;
+  var node=document.getElementById('chat-stream');
+  if(!node){ el.insertAdjacentHTML('beforeend',_streamBubbleHTML()); }
+  else{ var tx=node.querySelector('.msg-tx'); if(tx)tx.innerHTML=fmtChatText(_streamText)+'<span class="stream-caret"></span>'; }
+  el.scrollTop=el.scrollHeight;
+}
+function streamReveal(uid,full){
+  removeChatTyping();
+  if(_streamTimer){clearTimeout(_streamTimer);_streamTimer=null;}
+  full=String(full||'');
+  _streamActive=true;_streamText='';
+  var parts=full.split(/(\s+)/);   // garde les espaces
+  var i=0;
+  function step(){
+    // révèle 2 "mots" à la fois pour un effet fluide et rapide
+    _streamText+=parts.slice(i,i+2).join('');i+=2;
+    _streamRender();
+    if(i<parts.length){ _streamTimer=setTimeout(step,28); }
+    else{
+      _streamActive=false;_streamTimer=null;
+      var t=document.getElementById('chat-stream');if(t)t.remove();
+      db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:full,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+    }
+  }
+  step();
+}
 // Envoi d'une photo / vidéo / fichier dans le chat (client → admin)
 /* Upload d'image via ImgBB (clé partagée gérée par l'admin dans config/shop) */
 // 🎬 Upload d'une vidéo vers Supabase Storage (gratuit) → renvoie l'URL publique.
