@@ -34,6 +34,41 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // 🤖 Mode Gemini : réponse de l'assistant IA (fusionné ici pour rester sous 12 fonctions Vercel)
+  //    Variable d'environnement Vercel requise : GEMINI_API_KEY
+  {
+    let _b = req.body;
+    if (typeof _b === 'string') { try { _b = JSON.parse(_b || '{}'); } catch (e) { _b = {}; } }
+    _b = _b || {};
+    if (_b.mode === 'gemini') {
+      const KEY = process.env.GEMINI_API_KEY;
+      if (!KEY) return res.status(200).json({ reply: '' });
+      const sys = "Tu es l'assistant virtuel de LootR, une application de recharges de jeux et marketplace. "
+        + "LootR propose : recharges (UC PUBG Mobile, diamants Free Fire, CP Call of Duty, etc.), vente de comptes de jeu entre particuliers (Marketplace), une Boutique VPN, des points de fidélité, un portefeuille LootR, et un système de parrainage. "
+        + "Moyens de paiement : Orange Money, Wave, PayPal, carte bancaire, et le portefeuille LootR. Après paiement validé, la livraison est automatique et rapide (UC/diamants livrés sur l'ID joueur ; identifiants de compte remis dans l'app). "
+        + "Réponds TOUJOURS dans la langue du client, de façon courte, claire, polie et amicale (2 à 5 phrases max). Utilise quelques emojis avec parcimonie. "
+        + "Tu ne peux PAS accéder au compte du client ni voir ses commandes en temps réel. Ne promets jamais de remboursement ou d'action que seul un humain peut faire. "
+        + "Si le client veut parler à un vrai conseiller / administrateur / humain, ou si sa demande dépasse tes capacités (litige, paiement bloqué, remboursement, problème de compte), invite-le à taper « admin » pour être mis en relation avec un administrateur.";
+      const history = Array.isArray(_b.history) ? _b.history.slice(-8) : [];
+      const contents = [];
+      history.forEach(function (h) {
+        var t = String((h && h.text) || '').slice(0, 800); if (!t) return;
+        contents.push({ role: (h.role === 'bot' || h.role === 'model') ? 'model' : 'user', parts: [{ text: t }] });
+      });
+      contents.push({ role: 'user', parts: [{ text: String(_b.message || '').slice(0, 2000) }] });
+      try {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(KEY), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 500, temperature: 0.6 } })
+        });
+        const d = await r.json();
+        let text = '';
+        try { text = (((d.candidates || [])[0] || {}).content || {}).parts.map(function (p) { return p.text || ''; }).join(''); } catch (e) { text = ''; }
+        return res.status(200).json({ reply: (text || '').trim() });
+      } catch (e) { return res.status(200).json({ reply: '' }); }
+    }
+  }
+
   try {
     getApp();
     const db = admin.firestore();
