@@ -1782,6 +1782,8 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
   <div class="sh-head">
     <h3 id="msg-title">Conversation</h3>
     <div style="display:flex;gap:8px;align-items:center">
+      <button id="msg-ai-toggle" onclick="toggleHumanMode()" title="Basculer entre l'assistant IA et la prise en main humaine"
+        style="display:none;align-items:center;gap:6px;padding:7px 11px;border-radius:99px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">🤖 IA</button>
       <button class="ic-btn red" onclick="deleteConversation()" title="Supprimer la conversation"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
       <button class="sh-x" onclick="closeConv()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     </div>
@@ -3803,7 +3805,42 @@ async function deleteAcc(id){
 }
 
 /* ══ MESSAGERIE ADMIN ↔ CLIENT ══ */
-let convUnsub=null,curConvUid=null;
+let convUnsub=null,curConvUid=null,convDocUnsub=null,curConvHuman=false;
+// 🤖/👨‍💼 Reflète l'état « IA active » vs « prise en main humaine » sur le bouton d'en-tête.
+function renderAiToggle(){
+  var b=document.getElementById('msg-ai-toggle');if(!b)return;
+  b.style.display='inline-flex';
+  if(curConvHuman){
+    // Un humain gère → l'IA est en pause. Le bouton permet de RENDRE la main à l'IA (« Continue »).
+    b.innerHTML='👨‍💼 Humain · <span style="opacity:.85">Reprendre l\'IA ▶</span>';
+    b.style.background='linear-gradient(135deg,var(--accent),var(--accent2))';
+    b.style.color='#fff';b.style.borderColor='transparent';
+    b.title="Un administrateur gère la conversation (l'IA est en pause). Cliquez pour laisser l'assistant IA reprendre.";
+  }else{
+    // L'IA répond automatiquement. Le bouton permet de mettre l'IA en pause (prise en main).
+    b.innerHTML='🤖 IA active · <span style="opacity:.7">Prendre la main</span>';
+    b.style.background='var(--bg3)';
+    b.style.color='var(--text)';b.style.borderColor='var(--border)';
+    b.title="L'assistant IA répond automatiquement. Cliquez pour mettre l'IA en pause et gérer vous-même.";
+  }
+}
+// Bascule manuelle IA ⇄ humain depuis le panneau admin.
+async function toggleHumanMode(){
+  if(!curConvUid)return;
+  var next=!curConvHuman;
+  curConvHuman=next;renderAiToggle();
+  try{
+    await db.collection('chats').doc(curConvUid).set({humanMode:next},{merge:true});
+    if(next){
+      toast('👨‍💼 Prise en main — l\'IA est en pause');
+    }else{
+      // ▶ On rend la main à l'IA : elle « continue » à répondre au client dès son prochain message.
+      toast('🤖 L\'assistant IA reprend la conversation');
+      db.collection('chats').doc(curConvUid).collection('messages')
+        .add({from:'bot',text:"🤖 L'assistant automatique reprend la conversation. Posez votre question, je vous réponds tout de suite !",createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+    }
+  }catch(e){ curConvHuman=!next;renderAiToggle();toast('❌ '+e.message,true); }
+}
 async function loadConversations(){
   const el=document.getElementById('conv-list');
   try{
@@ -3827,6 +3864,10 @@ function openConv(uid){
   const c=db.collection('chats').doc(uid);
   c.get().then(d=>{const v=d.data()||{};document.getElementById('msg-title').textContent=v.userName||'Conversation';});
   c.update({unreadAdmin:0}).catch(()=>{});
+  // 🤖 Suit en temps réel l'état IA/humain de cette conversation pour l'afficher sur le bouton.
+  if(convDocUnsub)convDocUnsub();
+  curConvHuman=false;renderAiToggle();
+  convDocUnsub=c.onSnapshot(function(d){var v=(d.exists&&d.data())||{};curConvHuman=!!v.humanMode;renderAiToggle();},function(){});
   const thread=document.getElementById('msg-thread');
   thread.innerHTML='<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px">Chargement…</div>';
   if(convUnsub)convUnsub();
@@ -3861,6 +3902,8 @@ function openConv(uid){
 }
 function closeConv(){
   if(convUnsub){convUnsub();convUnsub=null;}
+  if(convDocUnsub){convDocUnsub();convDocUnsub=null;}
+  var b=document.getElementById('msg-ai-toggle');if(b)b.style.display='none';
   curConvUid=null;
   document.getElementById('msg-sh').classList.remove('on');
   document.getElementById('msg-bg').classList.remove('on');
@@ -3873,8 +3916,11 @@ async function sendReply(){
   const c=db.collection('chats').doc(curConvUid);
   try{
     await c.collection('messages').add({from:'admin',text,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    await c.set({lastMsg:text,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    // 👨‍💼 Dès qu'un admin répond, l'IA se met en pause (prise en main humaine) → elle ne
+    //    répondra plus jusqu'à ce que l'admin appuie sur « Reprendre l'IA ».
+    await c.set({lastMsg:text,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),humanMode:true,
       unreadUser:firebase.firestore.FieldValue.increment(1),unreadAdmin:0},{merge:true});
+    curConvHuman=true;renderAiToggle();
     // 🔔 Notification ciblée + message dans la liste de notifications du client
     notifyUser(curConvUid,{icon:'💬',title:'Message du support LootR',body:text,type:'message',link:'message'});
   }catch(e){toast('❌ '+e.message,true);inp.value=text;}
@@ -3923,8 +3969,9 @@ async function sendReplyMedia(e){
     const media={type:'image',url,name:file.name};
     const label='📷 Photo';
     await c.collection('messages').add({from:'admin',text:'',media,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    await c.set({lastMsg:label,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    await c.set({lastMsg:label,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),humanMode:true,
       unreadUser:firebase.firestore.FieldValue.increment(1),unreadAdmin:0},{merge:true});
+    curConvHuman=true;renderAiToggle();
     notifyUser(curConvUid,{icon:'💬',title:'Message du support LootR',body:label,type:'message',link:'message'});
     toast('✅ Envoyé');
   }catch(err){toast('❌ Envoi impossible',true);}
@@ -3961,7 +4008,8 @@ async function uploadAdminVoice(blob){
     const url=await ref.put(blob).then(s=>s.ref.getDownloadURL());
     const media={type:'audio',url,name:'Message vocal'};
     await c.collection('messages').add({from:'admin',text:'',media,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    await c.set({lastMsg:'🎤 Message vocal',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),unreadUser:firebase.firestore.FieldValue.increment(1),unreadAdmin:0},{merge:true});
+    await c.set({lastMsg:'🎤 Message vocal',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),humanMode:true,unreadUser:firebase.firestore.FieldValue.increment(1),unreadAdmin:0},{merge:true});
+    curConvHuman=true;renderAiToggle();
     notifyUser(curConvUid,{icon:'💬',title:'Message du support LootR',body:'🎤 Message vocal',type:'message',link:'message'});
     toast('✅ Vocal envoyé');
   }catch(e){toast('❌ Envoi impossible',true);}

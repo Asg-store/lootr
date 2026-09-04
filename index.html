@@ -8719,18 +8719,22 @@ async function sendChat(){
     },{merge:true});
     await db.collection('chats').doc(uid).collection('messages').add({from:'user',text,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
 
-    // 🙋 Le client demande un humain / administrateur → on bascule en "mode humain"
+    // 🙋 Le client demande un humain / administrateur → bascule DÉFINITIVE en « mode humain ».
+    //    À partir d'ici l'IA ne répond PLUS DU TOUT au client : seul un administrateur gère.
+    //    L'IA ne reprendra QUE si un admin appuie sur « Reprendre l'IA » dans le panneau admin.
     var _low=' '+text.toLowerCase().replace(/[^a-zàâçéèêëîïôûùüÿñæœ0-9\s]/gi,' ')+' ';
     var _wantsHuman=/\b(admin|administrateur|humain|conseiller|agent|assistance humaine|vraie personne|parler a quelqu un|quelqu un|responsable|support humain)\b/.test(_low);
-    if(_wantsHuman && !_adminJoined){
+    if(_wantsHuman && !_chatHumanMode){
+      _chatHumanMode=true;                                   // ⛔ l'IA se tait immédiatement (avant même la confirmation réseau)
       db.collection('chats').doc(uid).set({humanMode:true},{merge:true}).catch(function(){});
-      _chatHumanMode=true;
       var ackMsg="🙋 D'accord ! Je transmets votre demande à un administrateur. Il vous répondra ici même dès que possible. Vous pouvez continuer à écrire votre question en attendant.";
-      setTimeout(function(){db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:ackMsg,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});},500);
+      // Confirmation immédiate (plus de délai de 500 ms) puis on rend la main à l'humain.
+      db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:ackMsg,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
       return;
     }
-    // 👨‍💼 Un administrateur gère déjà la conversation (ou le client a demandé un humain) → l'IA se tait
-    if(_chatHumanMode || _adminJoined) return;
+    // ⛔ Un humain gère la conversation (client a demandé un admin, OU un admin est intervenu) → l'IA reste 100% silencieuse.
+    //    Tant que humanMode est actif, l'IA ne répond jamais. L'admin peut la réactiver via « Reprendre l'IA ».
+    if(_chatHumanMode) return;
 
     // 🤖 Sinon, l'assistant IA (Gemini) répond
     var _hist=(_chatMsgs||[]).slice(-8).map(function(m){return {role:(m.from==='bot'||m.from==='admin')?'model':'user',text:(m.text||'')};}).filter(function(h){return h.text;});
@@ -8792,10 +8796,10 @@ function streamReveal(uid,full){
   var parts=full.split(/(\s+)/);   // garde les espaces
   var i=0;
   function step(){
-    // révèle 2 "mots" à la fois pour un effet fluide et rapide
-    _streamText+=parts.slice(i,i+2).join('');i+=2;
+    // révèle 3 "mots" à la fois, très rapidement, pour une réponse quasi instantanée
+    _streamText+=parts.slice(i,i+3).join('');i+=3;
     _streamRender();
-    if(i<parts.length){ _streamTimer=setTimeout(step,28); }
+    if(i<parts.length){ _streamTimer=setTimeout(step,12); }
     else{
       _streamActive=false;_streamTimer=null;
       var t=document.getElementById('chat-stream');if(t)t.remove();
