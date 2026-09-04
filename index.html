@@ -33,8 +33,6 @@
 <link rel="stylesheet" href="https://checkoutshopper-live.adyen.com/checkoutshopper/sdk/5.66.1/adyen.css" crossorigin="anonymous"/>
 <script src="https://checkoutshopper-live.adyen.com/checkoutshopper/sdk/5.66.1/adyen.js" crossorigin="anonymous"></script>
 <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
-<!-- 📹 Daily.co : appels vidéo & vocal (la clé secrète reste côté serveur (/api/send-push mode daily-room)) -->
-<script src="https://unpkg.com/@daily-co/daily-js"></script>
 <!-- 😀 Emoji couleur 100% HORS-LIGNE : chaque emoji utilise la police emoji couleur
      de l'appareil (aucun fichier, aucun CDN, aucune dépendance internet). -->
 <style>
@@ -2029,9 +2027,7 @@ body.ios .pnotif .pn-ic{border-radius:11px}
   <div class="screen-head">
     <div class="back-btn" onclick="goBack()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></div>
     <div class="screen-title">💬 Support & Échange</div>
-    <button onclick="startChatCall(false)" title="Appel vocal" style="margin-left:auto;background:var(--bg3);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;color:var(--accent);font-size:17px;flex:0 0 auto">📞</button>
-    <button onclick="startChatCall(true)" title="Appel vidéo" style="margin-left:8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;color:var(--accent);font-size:17px;flex:0 0 auto">📹</button>
-    <div id="chat-presence" style="font-size:11px;font-weight:600;margin-left:8px;white-space:nowrap"></div>
+    <div id="chat-presence" style="font-size:11px;font-weight:600;margin-left:auto;white-space:nowrap"></div>
   </div>
   <div class="chat-wrap">
     <div class="chat-ads" id="chat-ads" style="display:none"></div>
@@ -8689,55 +8685,6 @@ async function delMyMsg(msgId){
   catch(e){showToast('❌ '+e.message);}
 }
 function fmtChatTime(ts){if(!(ts&&ts.toDate))return'';try{return ts.toDate().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}catch{return'';}}
-/* ═══════════ APPELS VIDÉO / VOCAL (Daily.co) ═══════════ */
-var _dailyFrame=null;
-function closeCall(){
-  try{if(_dailyFrame){_dailyFrame.destroy();_dailyFrame=null;}}catch(e){}
-  var ov=document.getElementById('call-ov');if(ov){ov.style.display='none';ov.innerHTML='';}
-}
-function _openCallOverlay(url,videoOn){
-  var ov=document.getElementById('call-ov');
-  if(!ov){ov=document.createElement('div');ov.id='call-ov';ov.style.cssText='position:fixed;inset:0;z-index:100001;background:#000;display:flex;flex-direction:column';document.body.appendChild(ov);}
-  ov.innerHTML='';ov.style.display='flex';
-  if(window.DailyIframe){
-    try{if(_dailyFrame){_dailyFrame.destroy();_dailyFrame=null;}}catch(e){}
-    _dailyFrame=window.DailyIframe.createFrame(ov,{showLeaveButton:true,iframeStyle:{position:'fixed',inset:'0',width:'100%',height:'100%',border:'0'}});
-    _dailyFrame.join({url:url,startVideoOff:!videoOn,startAudioOff:false});
-    _dailyFrame.on('left-meeting',function(){closeCall();});
-  }else{
-    ov.innerHTML='<iframe allow="camera;microphone;autoplay;fullscreen;display-capture" style="width:100%;height:100%;border:0" src="'+url+'"></iframe>'
-      +'<button onclick="closeCall()" style="position:absolute;top:12px;right:12px;z-index:2;padding:10px 14px;border:none;border-radius:12px;background:#e11d1d;color:#fff;font-weight:800">Quitter l\'appel</button>';
-  }
-}
-function startCall(roomName,videoOn){
-  showToast('📡 Connexion à l\'appel…');
-  fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'daily-room',room:roomName})})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(!d||!d.url){showToast('❌ '+((d&&d.error)||'Appel indisponible'));return;}
-      _openCallOverlay(d.url,videoOn);
-    })
-    .catch(function(){showToast('❌ Appel indisponible pour le moment');});
-}
-// Démarre un appel dans le Support & Échange (client → prévient l'admin dans le chat)
-function startChatCall(videoOn){
-  if(!currentUser){openAuthModal();showToast('🔐 Connectez-vous');return;}
-  var room='chat-'+currentUser.uid;
-  startCall(room,videoOn);
-  try{
-    var uid=currentUser.uid;
-    db.collection('chats').doc(uid).set({
-      userName:currentUser.displayName||(currentUser.email||'').split('@')[0],userEmail:currentUser.email||'',
-      lastMsg:(videoOn?'📹 Appel vidéo':'📞 Appel vocal')+' en cours',
-      updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-      unreadAdmin:firebase.firestore.FieldValue.increment(1)
-    },{merge:true});
-    db.collection('chats').doc(uid).collection('messages').add({
-      from:'user',text:(videoOn?'📹 Appel vidéo':'📞 Appel vocal')+' démarré — rejoignez-moi depuis le bouton d\'appel.',
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-  }catch(e){}
-}
 async function sendChat(){
   const inp=document.getElementById('chat-input');const text=inp.value.trim();if(!text||!currentUser)return;inp.value='';
   const uid=currentUser.uid;

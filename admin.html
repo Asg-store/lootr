@@ -1782,8 +1782,6 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
   <div class="sh-head">
     <h3 id="msg-title">Conversation</h3>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="ic-btn" onclick="adminJoinCall(false)" title="Rejoindre en appel vocal">📞</button>
-      <button class="ic-btn" onclick="adminJoinCall(true)" title="Rejoindre en appel vidéo">📹</button>
       <button class="ic-btn red" onclick="deleteConversation()" title="Supprimer la conversation"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
       <button class="sh-x" onclick="closeConv()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     </div>
@@ -1816,8 +1814,6 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
 
 <div id="toast">OK</div>
 
-<!-- 📹 Daily.co : appels vidéo & vocal (clé secrète côté serveur (/api/send-push mode daily-room)) -->
-<script src="https://unpkg.com/@daily-co/daily-js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -3868,40 +3864,6 @@ function closeConv(){
   curConvUid=null;
   document.getElementById('msg-sh').classList.remove('on');
   document.getElementById('msg-bg').classList.remove('on');
-}
-/* 📹 Appel vidéo / vocal admin ↔ client (même salle : chat-<uid>) */
-var _admDailyFrame=null;
-function admCloseCall(){
-  try{if(_admDailyFrame){_admDailyFrame.destroy();_admDailyFrame=null;}}catch(e){}
-  var ov=document.getElementById('adm-call-ov');if(ov){ov.style.display='none';ov.innerHTML='';}
-}
-function _admOpenCall(url,videoOn){
-  var ov=document.getElementById('adm-call-ov');
-  if(!ov){ov=document.createElement('div');ov.id='adm-call-ov';ov.style.cssText='position:fixed;inset:0;z-index:100001;background:#000;display:flex;flex-direction:column';document.body.appendChild(ov);}
-  ov.innerHTML='';ov.style.display='flex';
-  if(window.DailyIframe){
-    try{if(_admDailyFrame){_admDailyFrame.destroy();_admDailyFrame=null;}}catch(e){}
-    _admDailyFrame=window.DailyIframe.createFrame(ov,{showLeaveButton:true,iframeStyle:{position:'fixed',inset:'0',width:'100%',height:'100%',border:'0'}});
-    _admDailyFrame.join({url:url,startVideoOff:!videoOn,startAudioOff:false});
-    _admDailyFrame.on('left-meeting',function(){admCloseCall();});
-  }else{
-    ov.innerHTML='<iframe allow="camera;microphone;autoplay;fullscreen;display-capture" style="width:100%;height:100%;border:0" src="'+url+'"></iframe>'
-      +'<button onclick="admCloseCall()" style="position:absolute;top:12px;right:12px;z-index:2;padding:10px 14px;border:none;border-radius:12px;background:#e11d1d;color:#fff;font-weight:800">Quitter</button>';
-  }
-}
-function adminJoinCall(videoOn){
-  if(!curConvUid){toast('Ouvrez une conversation d\'abord');return;}
-  var room='chat-'+curConvUid;
-  toast('📡 Connexion à l\'appel…');
-  fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'daily-room',room:room})})
-    .then(function(r){return r.json();})
-    .then(function(d){ if(!d||!d.url){toast('❌ '+((d&&d.error)||'Appel indisponible'),true);return;} _admOpenCall(d.url,videoOn); })
-    .catch(function(){toast('❌ Appel indisponible',true);});
-  // prévient le client dans le chat
-  try{
-    db.collection('chats').doc(curConvUid).collection('messages').add({from:'admin',text:(videoOn?'📹 Appel vidéo':'📞 Appel vocal')+' démarré par le support — rejoignez depuis le bouton d\'appel.',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    db.collection('chats').doc(curConvUid).set({lastMsg:'Appel en cours',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),unreadUser:firebase.firestore.FieldValue.increment(1)},{merge:true});
-  }catch(e){}
 }
 async function sendReply(){
   const inp=document.getElementById('msg-reply');
