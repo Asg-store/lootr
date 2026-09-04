@@ -8752,7 +8752,7 @@ async function sendChat(){
       .then(function(r){return r.json();})
       .then(function(d){
         var reply=(d&&d.reply)?d.reply:'';
-        if(!reply && d && d.err){ try{showToast('⚠️ IA: '+d.err);}catch(e){} }
+        if(!reply && d && d.err){ try{console.warn('IA indisponible:',d.err);}catch(e){} }  // ⚠️ jamais montré au client
         if(!reply){ try{reply=aiAutoReply(text);}catch(e){reply='';} }
         if(!reply)reply="Merci pour votre message ✅ Je peux vous renseigner sur : prix, paiement, livraison, ID joueur, VPN, points, portefeuille, vente de compte. Pour parler à un administrateur, tapez « admin ».";
         streamReveal(uid,reply);   // ✨ effet mot par mot
