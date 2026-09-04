@@ -3679,7 +3679,7 @@ function filterAcc(status){
 function accThumb(a){
   const m=(a.media||[]).find(x=>x.type==='image')||(a.media||[])[0];
   if(m&&m.type==='image')return`<img src="${m.url}" style="width:100%;height:100%;object-fit:cover">`;
-  if(m&&m.type==='video')return`<video src="${m.url}" style="width:100%;height:100%;object-fit:cover" muted></video>`;
+  if(m&&m.type==='video')return`<div style="position:relative;width:100%;height:100%"><video src="${m.url}" style="width:100%;height:100%;object-fit:cover" muted preload="metadata"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><div style="width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">▶</div></div></div>`;
   return`<span style="font-size:26px">🎮</span>`;
 }
 function accStatusTag(s){
@@ -3705,8 +3705,11 @@ function renderAccounts(){
 function openAcc(id){
   const a=allAccounts.find(x=>x.id===id);if(!a)return;
   const media=(a.media||[]).map(m=>m.type==='video'
-    ?`<video src="${m.url}" controls style="width:100%;border-radius:10px;margin-bottom:8px;background:#000"></video>`
-    :`<img src="${m.url}" style="width:100%;border-radius:10px;margin-bottom:8px" onclick="window.open('${m.url}')">`).join('')
+    ?`<div style="position:relative;border-radius:14px;overflow:hidden;margin-bottom:10px;background:#000;box-shadow:0 6px 18px rgba(0,0,0,.28)">
+        <video src="${m.url}" controls playsinline preload="metadata" style="width:100%;display:block;max-height:360px;background:#000"></video>
+        <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;pointer-events:none">🎬 Vidéo</div>
+      </div>`
+    :`<img src="${m.url}" style="width:100%;border-radius:14px;margin-bottom:10px;display:block" onclick="window.open('${m.url}')">`).join('')
     ||'<div class="list-empty" style="padding:20px"><div class="ico">🖼️</div><p>Aucun média</p></div>';
   const spec=(l,v)=>v?`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3);font-size:12px">${l}</span><span style="font-weight:700;font-size:12px">${aEsc(String(v))}</span></div>`:'';
   document.getElementById('acc-detail').innerHTML=`
