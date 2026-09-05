@@ -1943,22 +1943,6 @@ body.ios .pnotif .pn-ic{border-radius:11px}
     <div class="field"><label>🌊 Numéro Wave (paiement)</label><input id="sell-wave" type="tel" inputmode="numeric" placeholder="Ex: 70000000" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
     <div style="font-size:11px;color:var(--text3);margin:-4px 0 10px;line-height:1.5">💡 Ces numéros permettent aux acheteurs de vous payer directement. Vous confirmez ensuite le paiement dans votre tableau de bord vendeur.</div>
 
-    <div class="field toggle-field">
-      <label class="toggle-row">
-        <span>⚡ Livraison automatique 2 à 5 min</span>
-        <label class="switch"><input type="checkbox" id="sell-instant" onchange="toggleInstantFields(this.checked)"><span class="slider"></span></label>
-      </label>
-      <span class="hint">Si activé, les identifiants ci-dessous sont envoyés automatiquement à l'acheteur dès que son paiement par carte (Adyen) est confirmé.</span>
-    </div>
-    <div id="sell-instant-fields" style="display:none">
-      <div class="f2">
-        <div class="field"><label>Identifiant de connexion</label><input id="sell-cred-login" placeholder="Email ou ID du compte"/></div>
-        <div class="field"><label>Mot de passe</label><input id="sell-cred-pass" type="text" placeholder="Mot de passe"/></div>
-      </div>
-      <div class="field"><label>Infos de récupération / notes pour l'acheteur</label><textarea id="sell-cred-notes" rows="2" placeholder="Code 2FA, lien de transfert, étapes à suivre…"></textarea></div>
-      <p class="hint" style="color:var(--gold)">🔒 Ces informations restent invisibles et chiffrées jusqu'à confirmation du paiement par l'acheteur.</p>
-    </div>
-
     <button class="btn-primary" id="sell-submit" onclick="submitAccount()">📤 Publier mon annonce</button>
     <p style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">Votre annonce sera vérifiée par un administrateur avant publication. Le paiement de l'acheteur se fait en toute sécurité sur la plateforme (Adyen).</p>
   </div>
@@ -6007,7 +5991,7 @@ function openAccount(id){
     ${a.isOfficial===true
       ? `<button class="btn-ghost-link" onclick="contactSupportAbout('${a.id}')">💬 Contacter via le support</button>`
       : (wa
-          ? `<a class="btn-ghost-link" style="display:block;text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${wa}?text=${encodeURIComponent('Bonjour, je suis intéressé par votre annonce LootR :\n• '+(a.title||'')+'\n• Prix : '+((+a.price||0))+'\n• Réf : '+shortRef(a.id))}">💬 Contacter le vendeur (WhatsApp)</a>`
+          ? `<a class="btn-ghost-link" style="display:block;text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${wa}?text=${encodeURIComponent('Bonjour, je suis intéressé par votre annonce LootR :\n• Annonce : '+(a.title||'—')+'\n• Jeu : '+(a.game||'—')+'\n• Prix : '+fmtMoney(+a.price||0)+'\n• Vendeur : '+(a.userName||'—')+'\n• Réf : '+shortRef(a.id))}">💬 Contacter le vendeur (WhatsApp)</a>`
           : `<button class="btn-ghost-link" onclick="contactSupportAbout('${a.id}')">💬 Contacter le vendeur</button>`)}`;
   }
   document.getElementById('account-detail').innerHTML=`
@@ -8040,7 +8024,7 @@ function aiEstimatePrice(){
   showToast('🤖 Prix estimé par l\'IA');
 }
 function toggleInstantFields(on){
-  document.getElementById('sell-instant-fields').style.display=on?'block':'none';
+  var el=document.getElementById('sell-instant-fields');if(el)el.style.display=on?'block':'none';
 }
 // Remplit le sélecteur « N° de Collection » (1 à 101) pour les annonces
 (function fillCollectionSelect(){
@@ -8063,10 +8047,6 @@ async function submitAccount(){
   const price=priceRaw/_rate;   // ex : 25000 XOF / 655.957 ≈ 38.11 € (base)
   if(!title){showToast('⚠️ Ajoutez un titre');return;}
   if(isNaN(priceRaw)||priceRaw<=0){showToast('⚠️ Prix invalide');return;}
-  const instant=document.getElementById('sell-instant').checked;
-  const credLogin=document.getElementById('sell-cred-login').value.trim();
-  const credPass=document.getElementById('sell-cred-pass').value.trim();
-  if(instant&&(!credLogin||!credPass)){showToast('⚠️ Renseignez les identifiants pour la livraison automatique');return;}
   const btn=document.getElementById('sell-submit');btn.disabled=true;btn.textContent='⏳ Publication…';
   // 🛡️ On n'enregistre QUE les médias hébergés (URL http). Un base64 (photo/vidéo non
   //    hébergée) est trop lourd et fait planter Firestore → on l'exclut de la sauvegarde.
@@ -8085,7 +8065,6 @@ async function submitAccount(){
       omNumber:document.getElementById('sell-om').value.trim()||'',
       waveNumber:document.getElementById('sell-wave').value.trim()||'',
       media:_mediaSafe,
-      instantDelivery:instant,
       status:'pending' // (re)validation par un admin
     };
     let accId;
@@ -8096,19 +8075,10 @@ async function submitAccount(){
       data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
       const ref=await db.collection('accounts').add(data);accId=ref.id;
     }
-    if(instant){
-      // Les identifiants ne sont jamais stockés dans le document public 'accounts'.
-      await db.collection('accounts').doc(accId).collection('private').doc('credentials').set({
-        login:credLogin,password:credPass,
-        notes:document.getElementById('sell-cred-notes').value.trim()||'',
-        createdAt:firebase.firestore.FieldValue.serverTimestamp()
-      },{merge:true});
-    }
     showToast(editListingId?'✅ Annonce modifiée — en attente de validation':'✅ Annonce envoyée pour validation !');
     if(_mediaDropped)setTimeout(function(){showToast('⚠️ '+_mediaDropped+' média(s) non enregistré(s) car l\'envoi a échoué. Réessayez de les ajouter.');},1600);
     editListingId=null;
-    ['sell-title','sell-level','sell-rank','sell-desc','sell-price','sell-contact','sell-om','sell-wave','sell-cred-login','sell-cred-pass','sell-cred-notes'].forEach(id=>{var _e=document.getElementById(id);if(_e)_e.value='';});
-    document.getElementById('sell-instant').checked=false;toggleInstantFields(false);
+    ['sell-title','sell-level','sell-rank','sell-desc','sell-price','sell-contact','sell-om','sell-wave'].forEach(id=>{var _e=document.getElementById(id);if(_e)_e.value='';});
     sellMedia=[];renderSellMedia();document.getElementById('ai-price-box').style.display='none';
     btn.textContent='📤 Publier mon annonce';
     goBack();openScreen('marketplace');setMkTab('all');
