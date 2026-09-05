@@ -1389,6 +1389,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
       <div class="form-grp"><label>Titre</label><input class="inp" id="sad-title" placeholder="Ex : Nouveau VPN ultra rapide !"/></div>
       <div class="form-grp"><label>Texte</label><input class="inp" id="sad-body" placeholder="Description courte"/></div>
       <div class="form-grp"><label>Photo (optionnel)</label><input type="file" id="sad-img" accept="image/*" style="font-size:12px"/></div>
+      <div class="form-grp"><label>🎬 Vidéo (optionnel)</label><input type="file" id="sad-vid" accept="video/*" style="font-size:12px"/><small style="font-size:11px;color:var(--text3)">La vidéo se lira automatiquement dans la pub (max 50 Mo).</small></div>
       <div class="f-row" style="gap:8px">
         <div class="form-grp" style="flex:1"><label>Cible</label>
           <select class="inp inp-sel" id="sad-target" onchange="var v=this.value==='account';document.getElementById('sad-accwrap').style.display=v?'block':'none';if(v)fillAdAccountSelect();"><option value="none">Aucune</option><option value="vpn">Boutique VPN (10 s)</option><option value="account">Compte à vendre</option></select></div>
@@ -4959,6 +4960,13 @@ async function publishScreenAd(){
       if(image.length>850000){toast('❌ Photo trop lourde, choisissez plus petite',true);return;}}
     // Pas de photo choisie ? on prend celle du compte à vendre. On récupère aussi sa VIDÉO.
     var video='';
+    // Vidéo choisie manuellement → upload Supabase (prioritaire)
+    var vf=(document.getElementById('sad-vid').files||[])[0];
+    if(vf){
+      if(vf.size>50000000){toast('❌ Vidéo trop lourde (max 50 Mo)',true);return;}
+      toast('⏳ Envoi de la vidéo…');
+      try{ video=await supaUploadVideo(vf); }catch(e){ toast('❌ Vidéo : '+(e.message||'échec'),true); return; }
+    }
     if(target==='account'&&accId){
       var a=(allAccounts||[]).find(function(x){return x.id===accId;});
       try{
@@ -4975,6 +4983,7 @@ async function publishScreenAd(){
     if(document.getElementById('sad-notif').checked)pushNotif('📢 '+title,body||'Nouvelle publicité sur LootR');
     ['sad-title','sad-body','sad-secs','sad-accid'].forEach(function(id){document.getElementById(id).value='';});
     document.getElementById('sad-img').value='';
+    var _sv=document.getElementById('sad-vid');if(_sv)_sv.value='';
     toast('✓ Publicité publiée !');
   }catch(e){toast('❌ '+e.message,true);}
 }
