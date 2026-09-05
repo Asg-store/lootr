@@ -4053,6 +4053,19 @@ function maybeShowScreenAd(context){
 function showScreenAd(ad){
   localStorage.setItem('asg-ad-last',String(Date.now()));
   var ov=document.getElementById('screen-ad-overlay');if(!ov)return;
+  ad=ad||{};
+  // 🔗 Pub liée à un compte → on récupère la VIDÉO (et la photo) de ce compte
+  try{
+    if(ad.targetType==='account' && ad.targetId && (!ad.video)){
+      var _acc=(allAccounts||[]).find(function(a){return a.id===ad.targetId;});
+      if(_acc && _acc.media){
+        var _v=_acc.media.find(function(m){return m.type==='video';});
+        var _i=_acc.media.find(function(m){return m.type==='image';});
+        if(_v&&_v.url)ad.video=_v.url;
+        if(_i&&_i.url&&!ad.image)ad.image=_i.url;
+      }
+    }
+  }catch(e){}
   var secs=+ad.seconds||(ad.targetType==='vpn'?10:15);
   var vEl=document.getElementById('sa-video');
   var iEl=document.getElementById('sa-img');
