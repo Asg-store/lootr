@@ -43,21 +43,14 @@ module.exports = async (req, res) => {
     if (_b.mode === 'gemini') {
       const KEY = process.env.GEMINI_API_KEY;
       if (!KEY) return res.status(200).json({ reply: '', err: 'GEMINI_API_KEY absente sur Vercel' });
+      const ctx = String(_b.context || '').slice(0, 5000);
       const sys = "Tu es l'assistant virtuel de LootR, une application de recharges de jeux et marketplace. "
         + "LootR propose : recharges (UC PUBG Mobile, diamants Free Fire, CP Call of Duty, etc.), vente de comptes de jeu entre particuliers (Marketplace), une Boutique VPN, des points de fidélité, un portefeuille LootR, et un système de parrainage. "
         + "Moyens de paiement : Orange Money, Wave, PayPal, carte bancaire, et le portefeuille LootR. Après paiement validé, la livraison est automatique et rapide (UC/diamants livrés sur l'ID joueur ; identifiants de compte remis dans l'app). "
-        + "IMPORTANT : réponds TOUJOURS de façon TRÈS COURTE (2 à 3 phrases maximum), va droit au but, dans la langue du client, poliment. Pas de longues listes. Un ou deux emojis max. "
-        + "Tu ne peux PAS accéder au compte du client ni voir ses commandes. Ne promets jamais de remboursement ou d'action que seul un humain peut faire. "
-        + "Si le client veut parler à un vrai conseiller / administrateur / humain, ou pour un litige/paiement bloqué/remboursement, invite-le à taper « admin ».";
-      // 🗂️ Catalogue réel (jeux + produits + prix) transmis par l'app : l'IA doit s'appuyer DESSUS.
-      const cat = String((_b && _b.catalog) || '').slice(0, 6000);
-      const sysFull = cat
-        ? (sys + "\n\n=== CATALOGUE ACTUEL DE LA BOUTIQUE (source de vérité) ===\n" + cat
-           + "\n=== FIN CATALOGUE ===\n"
-           + "Réponds en te basant UNIQUEMENT sur ce catalogue pour les noms de produits, jeux et PRIX. "
-           + "Cite le nom exact et le prix exact indiqués ci-dessus. N'invente JAMAIS un prix ni un produit. "
-           + "Si le produit demandé n'apparaît pas dans le catalogue, dis-le clairement et propose l'offre la plus proche qui existe.")
-        : sys;
+        + "RÈGLE : réponds TOI-MÊME, utilement et directement, à TOUTES les questions courantes (prix, produits, jeux, comment acheter/recharger/vendre, paiement, livraison, VPN, points, portefeuille, parrainage). "
+        + "NE dis PAS « tapez admin » à la fin de tes réponses normales. Ne propose « admin » QUE dans 2 cas : (1) le client demande explicitement un humain/conseiller/administrateur ; (2) problème grave que tu ne peux pas résoudre (paiement débité sans livraison, remboursement, commande payée non reçue, compte piraté/suspendu, litige avec un vendeur). Dans tous les autres cas, réponds simplement SANS jamais mentionner l'admin. "
+        + "Réponds TRÈS COURT (2 à 3 phrases max), dans la langue du client, poliment, 1 emoji max. Ne promets jamais de remboursement ou d'action que seul un humain peut faire. "
+        + (ctx ? ("\n\nINFORMATIONS ACTUELLES DE LA PLATEFORME (sers-t'en pour répondre précisément, ce sont les vrais produits/jeux/prix du moment) :\n" + ctx) : "");
       const history = Array.isArray(_b.history) ? _b.history.slice(-6) : [];
       const contents = [];
       history.forEach(function (h) {
@@ -65,26 +58,13 @@ module.exports = async (req, res) => {
         contents.push({ role: (h.role === 'bot' || h.role === 'model') ? 'model' : 'user', parts: [{ text: t }] });
       });
       contents.push({ role: 'user', parts: [{ text: String(_b.message || '').slice(0, 1500) }] });
-      const _body = JSON.stringify({ systemInstruction: { parts: [{ text: sysFull }] }, contents: contents, generationConfig: { maxOutputTokens: 220, temperature: 0.4 } });
-      // Modèles VALIDES, du plus rapide au plus stable. (« gemini-3.6-flash » n'existe pas → retiré.)
-      // Si un alias n'est pas dispo (404 rapide), on passe au suivant ; les 2.0/1.5 flash sont des valeurs sûres.
-      const MODELS = ['gemini-flash-lite-latest', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      const _body = JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 180, temperature: 0.5 } });
+      // On essaie le modèle le PLUS RAPIDE d'abord ; repli sur un modèle connu-stable si indisponible.
+      const MODELS = ['gemini-flash-lite-latest', 'gemini-3.6-flash', 'gemini-flash-latest'];
       let lastErr = '';
-      // ⏱️ Budget de temps GLOBAL partagé (les fonctions Vercel s'arrêtent vers 10 s) :
-      //    on ne dépasse jamais ~8,5 s au total, sinon on rend la main et le client
-      //    affiche aussitôt sa réponse locale instantanée.
-      const _deadline = Date.now() + 8500;
-      const _fetchTimeout = function (url, opts) {
-        const ms = Math.max(1200, _deadline - Date.now());   // temps restant (au moins 1,2 s)
-        const ctrl = new AbortController();
-        const id = setTimeout(function () { ctrl.abort(); }, ms);
-        return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
-          .finally(function () { clearTimeout(id); });
-      };
       for (let mi = 0; mi < MODELS.length; mi++) {
-        if (Date.now() >= _deadline) break;                  // plus de temps → repli local
         try {
-          const r = await _fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + MODELS[mi] + ':generateContent?key=' + encodeURIComponent(KEY), {
+          const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODELS[mi] + ':generateContent?key=' + encodeURIComponent(KEY), {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: _body
           });
           const d = await r.json();
@@ -92,13 +72,9 @@ module.exports = async (req, res) => {
           try { text = (((d.candidates || [])[0] || {}).content || {}).parts.map(function (p) { return p.text || ''; }).join(''); } catch (e) { text = ''; }
           if (text) return res.status(200).json({ reply: text.trim(), model: MODELS[mi] });
           try { lastErr = (d && d.error && d.error.message) ? d.error.message : ('HTTP ' + r.status); } catch (e) { lastErr = 'HTTP ' + r.status; }
-          // Modèle indisponible/introuvable → on tente le suivant ; toute autre erreur → on arrête.
+          // Si le modèle est simplement indisponible/introuvable → on essaie le suivant ; sinon on arrête.
           if (!/not (found|available|supported)|is not|does not exist/i.test(lastErr)) break;
-        } catch (e) {
-          // Timeout / abandon / réseau → inutile d'enchaîner les autres modèles (on perdrait du temps).
-          lastErr = String((e && e.message) || e);
-          break;
-        }
+        } catch (e) { lastErr = String((e && e.message) || e); }
       }
       return res.status(200).json({ reply: '', err: 'Gemini: ' + String(lastErr).slice(0, 160) });
     }
