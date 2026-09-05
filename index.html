@@ -8734,26 +8734,38 @@ async function sendChat(){
     //    pour ne jamais laisser le client sans réponse.
     if((_chatHumanMode || _adminJoined) && _adminIsOnline) return;
 
-    // 🤖 Sinon, l'assistant IA (Gemini) répond
-    var _hist=(_chatMsgs||[]).slice(-8).map(function(m){return {role:(m.from==='bot'||m.from==='admin')?'model':'user',text:(m.text||'')};}).filter(function(h){return h.text;});
-    appendChatTyping();
-    fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'gemini',message:text,history:_hist,context:buildAiContext()})})
-      .then(function(r){return r.json();})
-      .then(function(d){
-        removeChatTyping();
-        var reply=(d&&d.reply)?d.reply:'';
-        if(!reply && d && d.err){ try{showToast('⚠️ IA: '+d.err);}catch(e){} }
-        if(!reply){ try{reply=aiAutoReply(text);}catch(e){reply='';} }
-        if(!reply)reply="Merci pour votre message ✅ Je peux vous renseigner sur : prix, paiement, livraison, ID joueur, VPN, points, portefeuille, vente de compte. Pour parler à un administrateur, tapez « admin ».";
-        db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
-      })
-      .catch(function(){
-        removeChatTyping();
-        var reply;try{reply=aiAutoReply(text);}catch(e){reply='';}
-        if(!reply)reply="Merci pour votre message ✅ Un instant… Pour parler à un administrateur, tapez « admin ».";
-        db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
-      });
+    // 🤖 Sinon, l'assistant IA (Gemini) répond — en joignant une image récente si le client vient d'en envoyer une
+    aiGeminiReply(uid,text,_lastChatImage());
   }catch(e){showToast('❌ '+e.message);}
+}
+// Renvoie l'URL de la dernière image envoyée par le client (parmi les 4 derniers messages)
+function _lastChatImage(){
+  try{
+    var m=(_chatMsgs||[]).slice(-4);
+    for(var i=m.length-1;i>=0;i--){ if(m[i].from==='user'&&m[i].media&&m[i].media.type==='image'&&m[i].media.url)return m[i].media.url; }
+  }catch(e){}
+  return '';
+}
+// Appel unifié à l'assistant IA (texte + image éventuelle)
+function aiGeminiReply(uid,userText,imageUrl){
+  var _hist=(_chatMsgs||[]).slice(-8).map(function(m){return {role:(m.from==='bot'||m.from==='admin')?'model':'user',text:(m.text||(m.media?'[image]':''))};}).filter(function(h){return h.text;});
+  appendChatTyping();
+  fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'gemini',message:userText||'',history:_hist,context:buildAiContext(),imageUrl:imageUrl||''})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      removeChatTyping();
+      var reply=(d&&d.reply)?d.reply:'';
+      if(!reply && d && d.err){ try{showToast('⚠️ IA: '+d.err);}catch(e){} }
+      if(!reply){ try{reply=aiAutoReply(userText||'');}catch(e){reply='';} }
+      if(!reply)reply="Merci pour votre message ✅ Je peux vous renseigner sur : prix, paiement, livraison, ID joueur, VPN, points, portefeuille, vente de compte.";
+      db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+    })
+    .catch(function(){
+      removeChatTyping();
+      var reply;try{reply=aiAutoReply(userText||'');}catch(e){reply='';}
+      if(!reply)reply="Merci pour votre message ✅ Un instant…";
+      db.collection('chats').doc(uid).collection('messages').add({from:'bot',text:reply,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(){});
+    });
 }
 // Indicateur « l'assistant écrit… » (bulle temporaire)
 var _botTyping=false;
@@ -8929,6 +8941,10 @@ async function doSendChatPhoto(file){
     },{merge:true});
     await db.collection('chats').doc(uid).collection('messages').add({from:'user',text:'',media,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     showToast('✅ Envoyé');
+    // 🤖 L'IA analyse la photo (sauf si un administrateur EN LIGNE gère la conversation)
+    if(!((_chatHumanMode||_adminJoined)&&_adminIsOnline)){
+      aiGeminiReply(uid,'Le client vient d\'envoyer une image (capture d\'écran). Analyse-la et aide-le : décris ce que tu vois et donne la solution ou la réponse adaptée.',url);
+    }
   }catch(err){showToast('❌ Envoi impossible');}
 }
 // 🎤 Message vocal (enregistrement micro → Firebase Storage)
