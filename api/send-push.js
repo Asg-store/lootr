@@ -50,6 +50,7 @@ module.exports = async (req, res) => {
         + "RÈGLE : réponds TOI-MÊME, utilement et directement, à TOUTES les questions courantes (prix, produits, jeux, comment acheter/recharger/vendre, paiement, livraison, VPN, points, portefeuille, parrainage). "
         + "NE dis PAS « tapez admin » à la fin de tes réponses normales. Ne propose « admin » QUE dans 2 cas : (1) le client demande explicitement un humain/conseiller/administrateur ; (2) problème grave que tu ne peux pas résoudre (paiement débité sans livraison, remboursement, commande payée non reçue, compte piraté/suspendu, litige avec un vendeur). Dans tous les autres cas, réponds simplement SANS jamais mentionner l'admin. "
         + "Réponds TRÈS COURT (2 à 3 phrases max), dans la langue du client, poliment, 1 emoji max. Ne promets jamais de remboursement ou d'action que seul un humain peut faire. "
+        + "Tu PEUX voir et analyser les images / captures d'écran que le client envoie : décris ce que tu vois et aide concrètement (message d'erreur, écran bloqué, etc.). Ne dis JAMAIS que tu ne peux pas voir les images. "
         + (ctx ? ("\n\nINFORMATIONS ACTUELLES DE LA PLATEFORME (sers-t'en pour répondre précisément, ce sont les vrais produits/jeux/prix du moment) :\n" + ctx) : "");
       const history = Array.isArray(_b.history) ? _b.history.slice(-6) : [];
       const contents = [];
@@ -58,7 +59,21 @@ module.exports = async (req, res) => {
         contents.push({ role: (h.role === 'bot' || h.role === 'model') ? 'model' : 'user', parts: [{ text: t }] });
       });
       contents.push({ role: 'user', parts: [{ text: String(_b.message || '').slice(0, 1500) }] });
-      const _body = JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 180, temperature: 0.5 } });
+      // 🖼️ Image envoyée par le client → Gemini peut la voir (multimodal)
+      if (_b.imageUrl) {
+        try {
+          const ir = await fetch(String(_b.imageUrl));
+          if (ir.ok) {
+            const ct = (ir.headers.get('content-type') || 'image/jpeg').split(';')[0];
+            const ab = await ir.arrayBuffer();
+            const b64 = Buffer.from(ab).toString('base64');
+            if (b64 && b64.length < 6500000) {   // ~5 Mo max
+              contents[contents.length - 1].parts.push({ inlineData: { mimeType: ct, data: b64 } });
+            }
+          }
+        } catch (e) { /* image illisible → on répond quand même au texte */ }
+      }
+      const _body = JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: contents, generationConfig: { maxOutputTokens: 240, temperature: 0.5 } });
       // On essaie le modèle le PLUS RAPIDE d'abord ; repli sur un modèle connu-stable si indisponible.
       const MODELS = ['gemini-flash-lite-latest', 'gemini-3.6-flash', 'gemini-flash-latest'];
       let lastErr = '';
