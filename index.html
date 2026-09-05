@@ -8737,7 +8737,7 @@ async function sendChat(){
     // 🤖 Sinon, l'assistant IA (Gemini) répond
     var _hist=(_chatMsgs||[]).slice(-8).map(function(m){return {role:(m.from==='bot'||m.from==='admin')?'model':'user',text:(m.text||'')};}).filter(function(h){return h.text;});
     appendChatTyping();
-    fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'gemini',message:text,history:_hist})})
+    fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'gemini',message:text,history:_hist,context:buildAiContext()})})
       .then(function(r){return r.json();})
       .then(function(d){
         removeChatTyping();
@@ -8757,6 +8757,26 @@ async function sendChat(){
 }
 // Indicateur « l'assistant écrit… » (bulle temporaire)
 var _botTyping=false;
+// 🧠 Construit un résumé des données LIVE de la plateforme pour l'IA
+//    (jeux, produits, VPN, points, marketplace, paiements). Ainsi l'IA connaît
+//    automatiquement tout nouveau produit/jeu ajouté par l'admin.
+function buildAiContext(){
+  try{
+    var P=[];
+    var games=(typeof GAMES!=='undefined'?GAMES:[]).map(function(g){return g&&g.name;}).filter(Boolean);
+    if(games.length)P.push('Jeux disponibles : '+games.slice(0,50).join(', ')+'.');
+    var prods=(typeof allProducts!=='undefined'?allProducts:[]).slice(0,60).map(function(p){var pr=(typeof p.price==='number')?fmtMoney(p.price):'';return (p.name||'')+(pr?(' ('+pr+')'):'');}).filter(function(s){return s.trim();});
+    if(prods.length)P.push('Recharges / produits : '+prods.join(' ; ')+'.');
+    var pts=(typeof pointsProducts!=='undefined'?pointsProducts:[]).slice(0,30).map(function(p){var c=(+p.cost||+p.points||0);return (p.name||'')+(c?(' — '+c+' pts'):'');}).filter(function(s){return s.trim();});
+    if(pts.length)P.push('Boutique Points (achetables avec des points) : '+pts.join(' ; ')+'.');
+    var vpn=(typeof vpnFiles!=='undefined'?vpnFiles:[]).slice(0,20).map(function(v){var pr=(typeof v.price==='number')?fmtMoney(v.price):'';return (v.name||'')+(pr?(' ('+pr+')'):'');}).filter(function(s){return s.trim();});
+    if(vpn.length)P.push('Boutique VPN : '+vpn.join(' ; ')+'.');
+    var accs=(typeof allAccounts!=='undefined'?allAccounts:[]).filter(function(a){return a&&a.status==='approved';});
+    if(accs.length)P.push('Marketplace : '+accs.length+' compte(s) en vente (ex : '+accs.slice(0,5).map(function(a){return (a.title||'compte')+' '+((typeof a.price==='number')?fmtMoney(a.price):'');}).join(', ')+').');
+    try{P.push('Moyens de paiement actifs : '+aiPayList()+'.');}catch(e){}
+    return P.join('\n').slice(0,5000);
+  }catch(e){return '';}
+}
 // Formate le texte d'un message : échappe le HTML puis convertit le **gras** Markdown de l'IA
 function fmtChatText(t){
   t=String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
