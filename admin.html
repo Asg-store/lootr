@@ -580,7 +580,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
 <!-- SIDE DRAWER -->
 <aside id="drawer">
   <div class="dr-section">
-    <div class="dr-label">Général</div>
+    <div class="dr-label">📊 Général</div>
     <div class="dr-item active" data-pg="dashboard" onclick="drawerGo('dashboard')">
       <span class="d-ico"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Dashboard
     </div>
@@ -593,21 +593,9 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
   </div>
   <div class="dr-divider"></div>
   <div class="dr-section">
-    <div class="dr-label">Boutique</div>
+    <div class="dr-label">📦 Boutique &amp; Catalogue</div>
     <div class="dr-item" data-pg="products" onclick="drawerGo('products')">
       <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span> Produits
-    </div>
-    <div class="dr-item" data-pg="clients" onclick="drawerGo('clients')">
-      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Clients
-    </div>
-    <div class="dr-item" data-pg="logo" onclick="drawerGo('logo')">
-      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg></span> Logo & Nom
-    </div>
-    <div class="dr-item" data-pg="banner" onclick="drawerGo('banner')">
-      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span> Bannière Promo
-    </div>
-    <div class="dr-item" data-pg="photos" onclick="drawerGo('photos')">
-      <span class="d-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span> Photos Produits
     </div>
     <div class="dr-item" data-pg="games" onclick="drawerGo('games')">
       <span class="d-ico"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="3"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="15" y1="13" x2="15.01" y2="13"/><line x1="18" y1="11" x2="18.01" y2="11"/></svg></span> Logos des jeux
@@ -615,21 +603,45 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
   </div>
   <div class="dr-divider"></div>
   <div class="dr-section">
-    <div class="dr-label">Plateforme</div>
-    <div class="dr-item" data-pg="announce" onclick="drawerGo('announce')">
-      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg></span> Annonces / Notif
+    <div class="dr-label">🎨 Apparence</div>
+    <div class="dr-item" data-pg="logo" onclick="drawerGo('logo')">
+      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg></span> Logo &amp; Nom
     </div>
+    <div class="dr-item" data-pg="banner" onclick="drawerGo('banner')">
+      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span> Bannière Promo
+    </div>
+    <div class="dr-item" data-pg="photos" onclick="drawerGo('photos')">
+      <span class="d-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span> Photos Produits
+    </div>
+  </div>
+  <div class="dr-divider"></div>
+  <div class="dr-section">
+    <div class="dr-label">🛒 Marketplace</div>
     <div class="dr-item" data-pg="accounts" onclick="drawerGo('accounts')">
       <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span> Comptes à vendre
       <span class="cat-count" id="acc-pending-badge" style="margin-left:auto;background:var(--orange);color:#000;font-size:11px;padding:1px 7px;border-radius:99px;display:none">0</span>
+    </div>
+    <div class="dr-item" data-pg="reports" onclick="drawerGo('reports')">
+      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M4 22V4h13l-2 4 2 4H6"/><line x1="4" y1="22" x2="4" y2="14"/></svg></span> Signalements
+      <span class="cat-count" id="rep-pending-badge" style="margin-left:auto;background:var(--red);color:#fff;font-size:11px;padding:1px 7px;border-radius:99px;display:none">0</span>
+    </div>
+  </div>
+  <div class="dr-divider"></div>
+  <div class="dr-section">
+    <div class="dr-label">👥 Clients &amp; Support</div>
+    <div class="dr-item" data-pg="clients" onclick="drawerGo('clients')">
+      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Clients
     </div>
     <div class="dr-item" data-pg="messages" onclick="drawerGo('messages')">
       <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span> Messages clients
       <span class="cat-count" id="msg-unread-badge" style="margin-left:auto;background:var(--red);color:#fff;font-size:11px;padding:1px 7px;border-radius:99px;display:none">0</span>
     </div>
-    <div class="dr-item" data-pg="reports" onclick="drawerGo('reports')">
-      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M4 22V4h13l-2 4 2 4H6"/><line x1="4" y1="22" x2="4" y2="14"/></svg></span> Signalements
-      <span class="cat-count" id="rep-pending-badge" style="margin-left:auto;background:var(--red);color:#fff;font-size:11px;padding:1px 7px;border-radius:99px;display:none">0</span>
+  </div>
+  <div class="dr-divider"></div>
+  <div class="dr-section">
+    <div class="dr-label">📣 Marketing &amp; Fidélité</div>
+    <div class="dr-item" data-pg="announce" onclick="drawerGo('announce')">
+      <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg></span> Annonces / Notif
     </div>
     <div class="dr-item" data-pg="rewards" onclick="drawerGo('rewards')">
       <span class="d-ico"><svg viewBox="0 0 24 24"><polygon points="6 3 18 3 22 9 12 22 2 9 6 3"/><line x1="2" y1="9" x2="22" y2="9"/><polyline points="6 3 12 9 18 3"/></svg></span> Récompenses & Plus
@@ -638,7 +650,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
   </div>
   <div class="dr-divider"></div>
   <div class="dr-section">
-    <div class="dr-label">Accès rapide</div>
+    <div class="dr-label">⚡ Accès rapide</div>
     <div class="dr-item" onclick="location.href='index.html'">
       <span class="d-ico"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> Voir la boutique
     </div>
