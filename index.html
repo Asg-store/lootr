@@ -1893,6 +1893,7 @@ body.ios .pnotif .pn-ic{border-radius:11px}
     <div class="screen-title">💰 Vendre mon compte</div>
   </div>
   <div class="screen-body">
+    <div id="sell-ban-banner"></div>
     <div class="field"><label>Jeu *</label>
       <select id="sell-game"></select>
     </div>
@@ -7430,30 +7431,41 @@ function _statusLabel(s){
     :s==='rejected'?'<span style="color:var(--red,#ff4444)">❌ Refusée</span>'
     :vEsc(s||'—');
 }
-function renderSellerDash(){
-  var el=document.getElementById('pf-seller');if(!el)return;
-  var reqHtml=mpRequestsHtml();
-  // 🚫 État de l'espace vendeur (bloqué / suspendu par l'admin)
-  var banHtml='',_sellStop=false;
+// Bandeau d'état de l'espace vendeur (bloqué / suspendu). where='sell' ou 'dash'
+function sellBanBannerHTML(){
   try{
     var _sb=userData&&userData.sellBanned;
     var _until=(userData&&userData.sellBannedUntil&&userData.sellBannedUntil.toMillis)?userData.sellBannedUntil.toMillis():0;
-    if(_sb && (!_until || _until>Date.now())){
-      _sellStop=true;
-      if(_until){
-        // ⏸ Suspendu temporaire (avec date) — PAS de bouton support
-        banHtml='<div style="background:rgba(245,166,35,.12);border:1px solid #f5a623;border-radius:14px;padding:14px;margin-bottom:12px">'
-          +'<div style="font-weight:800;color:#f5a623;font-size:14px;margin-bottom:4px">⏸ Espace vendeur suspendu</div>'
-          +'<div style="font-size:12.5px;color:var(--text2);line-height:1.5">Vous ne pouvez pas publier d\'annonce jusqu\'au <b>'+new Date(_until).toLocaleDateString('fr-FR')+'</b>. Vous pourrez revendre automatiquement après cette date.</div></div>';
-      }else{
-        // 🚫 Bloqué (permanent) — AVEC bouton Contacter le support
-        banHtml='<div style="background:rgba(255,90,90,.12);border:1px solid #ff5a5a;border-radius:14px;padding:14px;margin-bottom:12px">'
-          +'<div style="font-weight:800;color:#ff5a5a;font-size:14px;margin-bottom:4px">🚫 Espace vendeur bloqué</div>'
-          +'<div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:10px">Vous ne pouvez plus publier d\'annonce. Contactez le support pour débloquer votre espace vendeur.</div>'
-          +'<button onclick="openChat()" style="width:100%;padding:12px;border:none;border-radius:12px;font-weight:700;font-size:13px;color:#fff;background:linear-gradient(135deg,#25D366,#128C7E)">💬 Contacter le support</button></div>';
-      }
+    if(!_sb || (_until && _until<=Date.now()))return '';
+    if(_until){
+      return '<div style="background:rgba(245,166,35,.12);border:1px solid #f5a623;border-radius:14px;padding:14px;margin-bottom:12px">'
+        +'<div style="font-weight:800;color:#f5a623;font-size:14px;margin-bottom:4px">⏸ Espace vendeur suspendu</div>'
+        +'<div style="font-size:12.5px;color:var(--text2);line-height:1.5">Vous ne pouvez pas publier d\'annonce jusqu\'au <b>'+new Date(_until).toLocaleDateString('fr-FR')+'</b>. Vous pourrez revendre automatiquement après cette date.</div></div>';
     }
-  }catch(e){}
+    return '<div style="background:rgba(255,90,90,.12);border:1px solid #ff5a5a;border-radius:14px;padding:14px;margin-bottom:12px">'
+      +'<div style="font-weight:800;color:#ff5a5a;font-size:14px;margin-bottom:4px">🚫 Espace vendeur bloqué</div>'
+      +'<div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:10px">Vous ne pouvez plus publier d\'annonce. Contactez le support pour débloquer votre espace vendeur.</div>'
+      +'<button onclick="contactSupportUnblock()" style="width:100%;padding:12px;border:none;border-radius:12px;font-weight:700;font-size:13px;color:#fff;background:linear-gradient(135deg,#25D366,#128C7E)">💬 Contacter le support</button></div>';
+  }catch(e){return '';}
+}
+function sellBanned(){
+  try{var _sb=userData&&userData.sellBanned;var _u=(userData&&userData.sellBannedUntil&&userData.sellBannedUntil.toMillis)?userData.sellBannedUntil.toMillis():0;return !!(_sb&&(!_u||_u>Date.now()));}catch(e){return false;}
+}
+// Ouvre le support et pré-écrit un message sur l'espace vendeur bloqué/suspendu
+function contactSupportUnblock(){
+  try{openChat();}catch(e){}
+  setTimeout(function(){
+    var inp=document.getElementById('chat-input');if(!inp)return;
+    var _u=(userData&&userData.sellBannedUntil&&userData.sellBannedUntil.toMillis)?userData.sellBannedUntil.toMillis():0;
+    var name=(currentUser&&(currentUser.displayName||(currentUser.email||'').split('@')[0]))||'';
+    inp.value='Bonjour'+(name?(' '+name):'')+' 👋\nMon espace vendeur est '+(_u?('suspendu jusqu\'au '+new Date(_u).toLocaleDateString('fr-FR')):'bloqué 🚫')+'.\nPouvez-vous vérifier mon compte et débloquer mes ventes, s\'il vous plaît ? Merci.';
+    try{inp.focus();}catch(e){}
+  },450);
+}
+function renderSellerDash(){
+  var el=document.getElementById('pf-seller');if(!el)return;
+  var reqHtml=mpRequestsHtml();
+  var banHtml=sellBanBannerHTML();var _sellStop=sellBanned();
   if(!myListings.length){
     el.innerHTML=reqHtml+banHtml
       +(_sellStop?'':'<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Vous ne vendez pas encore de compte.</div>'
@@ -7949,6 +7961,16 @@ function openSell(){
   editListingId=null;
   const sb=document.getElementById('sell-submit');if(sb)sb.textContent='📤 Publier mon annonce';
   openScreen('sell');renderSellMedia();
+  renderSellFormBan();
+}
+// Affiche le bandeau bloqué/suspendu en haut du formulaire de vente et bloque le bouton si besoin
+function renderSellFormBan(){
+  var b=document.getElementById('sell-ban-banner');if(b)b.innerHTML=sellBanBannerHTML();
+  var sb=document.getElementById('sell-submit');
+  if(sb){
+    if(sellBanned()){ sb.disabled=true; sb.style.opacity='.5'; sb.style.pointerEvents='none'; sb.textContent='🚫 Vente indisponible'; }
+    else { sb.disabled=false; sb.style.opacity=''; sb.style.pointerEvents=''; }
+  }
 }
 // ✏️ Modifier une annonce existante (le vendeur uniquement)
 function editListing(id){
