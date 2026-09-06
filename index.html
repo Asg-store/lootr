@@ -5986,17 +5986,23 @@ function openAccount(id){
   }else if(sold){
     actionHtml=`<button class="btn-primary" disabled style="opacity:.5">✅ Déjà vendu</button>`;
   }else{
+    var _bBuy='flex:1;min-width:132px;box-sizing:border-box;padding:13px 8px;border:none;border-radius:13px;font-size:13.5px;font-weight:800;color:#fff;cursor:pointer;text-align:center;text-decoration:none';
+    var _bSub='flex:1;min-width:132px;box-sizing:border-box;padding:13px 8px;border:none;border-radius:13px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;text-align:center;text-decoration:none;display:block';
     if(a.isOfficial===true){
-      // 🏢 Compte OFFICIEL LootR (admin) → achat direct dans l'app (carte / portefeuille / points)
-      actionHtml=`<button onclick="openAccountPay('${a.id}')" style="display:block;width:100%;box-sizing:border-box;padding:16px;margin-bottom:12px;border:none;border-radius:16px;font-size:16px;font-weight:800;color:#fff;background:linear-gradient(135deg,#00b0ff,#7c3aed);box-shadow:0 8px 22px rgba(124,58,237,.35);cursor:pointer">🛒 Acheter ce compte · ${fmtMoney(+a.price||0)}</button>`
-        +`<button onclick="contactSupportAbout('${a.id}')" style="display:block;width:100%;box-sizing:border-box;padding:15px;border:none;border-radius:16px;font-size:15px;font-weight:700;color:#fff;background:linear-gradient(135deg,#25D366,#128C7E);box-shadow:0 6px 18px rgba(37,211,102,.3);cursor:pointer">💬 Contacter via le support</button>`;
+      // 🏢 Compte OFFICIEL LootR (admin) → achat in-app + OM/Wave + support (boutons compacts en ligne)
+      var _mpPayA=(a.omNumber||a.waveNumber)?`<button onclick="openMpPay('${a.id}')" style="${_bBuy};background:linear-gradient(135deg,#ff8a00,#ff4d6d)">🟠🌊 OM / Wave</button>`:'';
+      actionHtml=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">`
+        +`<button onclick="openAccountPay('${a.id}')" style="${_bBuy};background:linear-gradient(135deg,#00b0ff,#7c3aed)">🛒 Acheter · ${fmtMoney(+a.price||0)}</button>`
+        +_mpPayA
+        +`<button onclick="contactSupportAbout('${a.id}')" style="${_bSub};background:linear-gradient(135deg,#25D366,#128C7E)">💬 Support</button>`
+        +`</div>`;
     }else{
-      // 👤 Compte d'un VENDEUR particulier → paiement direct au vendeur (OM/Wave) + contact (pas d'achat in-app)
-      var _mpPay=(a.omNumber||a.waveNumber)?`<button onclick="openMpPay('${a.id}')" style="display:block;width:100%;box-sizing:border-box;padding:16px;margin-bottom:12px;border:none;border-radius:16px;font-size:16px;font-weight:800;color:#fff;background:linear-gradient(135deg,#ff8a00,#ff4d6d);box-shadow:0 8px 22px rgba(255,90,90,.35);cursor:pointer">🟠🌊 Payer le vendeur · ${fmtMoney(+a.price||0)}</button>`:'';
+      // 👤 Compte d'un VENDEUR particulier → paiement direct + contact (boutons compacts en ligne)
+      var _mpPay=(a.omNumber||a.waveNumber)?`<button onclick="openMpPay('${a.id}')" style="${_bBuy};background:linear-gradient(135deg,#ff8a00,#ff4d6d)">🟠🌊 Payer · ${fmtMoney(+a.price||0)}</button>`:'';
       var _contact=wa
-          ? `<a target="_blank" rel="noopener" href="https://wa.me/${wa}?text=${encodeURIComponent('Bonjour, je suis intéressé par votre annonce LootR :\n• Annonce : '+(a.title||'—')+'\n• Jeu : '+(a.game||'—')+'\n• Prix : '+fmtMoney(+a.price||0)+'\n• Vendeur : '+(a.userName||'—')+'\n• Réf : '+shortRef(a.id))}" style="display:block;width:100%;box-sizing:border-box;padding:15px;border-radius:16px;font-size:15px;font-weight:700;color:#fff;text-align:center;text-decoration:none;background:linear-gradient(135deg,#25D366,#128C7E);box-shadow:0 6px 18px rgba(37,211,102,.3)">💬 Contacter le vendeur (WhatsApp)</a>`
-          : `<button onclick="contactSupportAbout('${a.id}')" style="display:block;width:100%;box-sizing:border-box;padding:15px;border:none;border-radius:16px;font-size:15px;font-weight:700;color:#fff;background:linear-gradient(135deg,#25D366,#128C7E);box-shadow:0 6px 18px rgba(37,211,102,.3);cursor:pointer">💬 Contacter le vendeur</button>`;
-      actionHtml=`${_mpPay}${_contact}`;
+          ? `<a target="_blank" rel="noopener" href="https://wa.me/${wa}?text=${encodeURIComponent('Bonjour, je suis intéressé par votre annonce LootR :\n• Annonce : '+(a.title||'—')+'\n• Jeu : '+(a.game||'—')+'\n• Prix : '+fmtMoney(+a.price||0)+'\n• Vendeur : '+(a.userName||'—')+'\n• Réf : '+shortRef(a.id))}" style="${_bSub};background:linear-gradient(135deg,#25D366,#128C7E)">💬 WhatsApp</a>`
+          : `<button onclick="contactSupportAbout('${a.id}')" style="${_bSub};background:linear-gradient(135deg,#25D366,#128C7E)">💬 Contacter</button>`;
+      actionHtml=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">${_mpPay}${_contact}</div>`;
     }
   }
   document.getElementById('account-detail').innerHTML=`
