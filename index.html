@@ -7477,8 +7477,11 @@ function mpRequestsHtml(){
       +'<div style="font-weight:700;font-size:13px;margin-bottom:4px">🛒 '+vEsc(o.listingTitle||'Compte')+' · '+fmtMoney(+o.price||0)+'</div>'
       +'<div style="font-size:12px;color:var(--text2);line-height:1.7">Acheteur : <b>'+vEsc(o.buyerName||'Client')+'</b>'
       +(o.buyerPhone?'<br>📞 '+vEsc(o.buyerPhone):'')
-      +(o.proofUrl?'<br><a href="'+o.proofUrl+'" target="_blank" rel="noopener" style="color:var(--accent)">📎 Voir la preuve de paiement</a>':'<br><span style="color:var(--text3)">Aucune preuve jointe</span>')
       +'</div>'
+      +(o.proofUrl
+          ? '<div style="margin-top:8px"><div style="font-size:11px;color:var(--text3);margin-bottom:5px">📎 Preuve de paiement (appuyez pour agrandir)</div>'
+            +'<img src="'+o.proofUrl+'" onclick="openLightbox({type:\'image\',url:\''+o.proofUrl+'\'})" style="width:92px;height:92px;object-fit:cover;border-radius:12px;border:1px solid var(--border);cursor:pointer;display:block"/></div>'
+          : '<div style="margin-top:6px;font-size:12px;color:var(--text3)">Aucune preuve jointe</div>')
       +'<div style="display:flex;gap:8px;margin-top:10px">'
         +'<button style="flex:1;padding:8px;border:none;border-radius:8px;font-weight:700;font-size:12px;color:#052;background:linear-gradient(135deg,#00e676,#00b0ff)" onclick="mpConfirm(\''+o.id+'\')">✅ Confirmer</button>'
         +'<button style="flex:1;padding:8px;border:none;border-radius:8px;font-weight:700;font-size:12px;color:#fff;background:linear-gradient(135deg,#ff5a5a,#c0392b)" onclick="mpRefuse(\''+o.id+'\')">❌ Refuser</button>'
