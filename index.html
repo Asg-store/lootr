@@ -7433,9 +7433,31 @@ function _statusLabel(s){
 function renderSellerDash(){
   var el=document.getElementById('pf-seller');if(!el)return;
   var reqHtml=mpRequestsHtml();
+  // 🚫 État de l'espace vendeur (bloqué / suspendu par l'admin)
+  var banHtml='',_sellStop=false;
+  try{
+    var _sb=userData&&userData.sellBanned;
+    var _until=(userData&&userData.sellBannedUntil&&userData.sellBannedUntil.toMillis)?userData.sellBannedUntil.toMillis():0;
+    if(_sb && (!_until || _until>Date.now())){
+      _sellStop=true;
+      if(_until){
+        // ⏸ Suspendu temporaire (avec date) — PAS de bouton support
+        banHtml='<div style="background:rgba(245,166,35,.12);border:1px solid #f5a623;border-radius:14px;padding:14px;margin-bottom:12px">'
+          +'<div style="font-weight:800;color:#f5a623;font-size:14px;margin-bottom:4px">⏸ Espace vendeur suspendu</div>'
+          +'<div style="font-size:12.5px;color:var(--text2);line-height:1.5">Vous ne pouvez pas publier d\'annonce jusqu\'au <b>'+new Date(_until).toLocaleDateString('fr-FR')+'</b>. Vous pourrez revendre automatiquement après cette date.</div></div>';
+      }else{
+        // 🚫 Bloqué (permanent) — AVEC bouton Contacter le support
+        banHtml='<div style="background:rgba(255,90,90,.12);border:1px solid #ff5a5a;border-radius:14px;padding:14px;margin-bottom:12px">'
+          +'<div style="font-weight:800;color:#ff5a5a;font-size:14px;margin-bottom:4px">🚫 Espace vendeur bloqué</div>'
+          +'<div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:10px">Vous ne pouvez plus publier d\'annonce. Contactez le support pour débloquer votre espace vendeur.</div>'
+          +'<button onclick="openChat()" style="width:100%;padding:12px;border:none;border-radius:12px;font-weight:700;font-size:13px;color:#fff;background:linear-gradient(135deg,#25D366,#128C7E)">💬 Contacter le support</button></div>';
+      }
+    }
+  }catch(e){}
   if(!myListings.length){
-    el.innerHTML=reqHtml+'<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Vous ne vendez pas encore de compte.</div>'
-      +'<button class="btn-primary" style="width:100%" onclick="screenFromProfile(\'sell\')">➕ Publier une annonce</button>';
+    el.innerHTML=reqHtml+banHtml
+      +(_sellStop?'':'<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Vous ne vendez pas encore de compte.</div>'
+      +'<button class="btn-primary" style="width:100%" onclick="screenFromProfile(\'sell\')">➕ Publier une annonce</button>');
     return;
   }
   var totalViews=0,sold=0,earn=0,active=0;
@@ -7461,7 +7483,7 @@ function renderSellerDash(){
           :(boosted?'<span style="font-size:11px;color:var(--accent);font-weight:700">📢 Sponsorisé</span>':''))
       +'</div>';
   }).join('');
-  el.innerHTML=reqHtml+stats+rows;
+  el.innerHTML=reqHtml+banHtml+stats+rows;
 }
 
 /* ═══════════ VENTE ENTRE PARTICULIERS (paiement manuel OM/Wave au vendeur) ═══════════ */
@@ -8216,9 +8238,12 @@ function routeNotif(n){
     // 💬 Message du support → Support & Échange
     case 'message': case 'chat': case 'support':
       _goChat(); return;
-    // 📦 Commande / livraison / paiement / compte livré → Historique des paiements
-    case 'order': case 'orders': case 'payments': case 'delivery': case 'account':
+    // 📦 Commande / livraison / paiement → Historique des paiements
+    case 'order': case 'orders': case 'payments': case 'delivery':
       _goPayHistory(n); return;
+    // 👤 Compte / avertissement / statut / achat confirmé → Mon profil (dashboard vendeur + Mes achats)
+    case 'account':
+      (typeof openProfile==='function')?openProfile():openScreen('profile'); return;
     // 💰 Portefeuille / recharge → Portefeuille
     case 'wallet': case 'credit': case 'recharge':
       openScreen('wallet'); return;
@@ -9704,7 +9729,8 @@ function openSectionByType(open){
   whenAuthReady(function(){
   try{
     if(open==='message'||open==='chat'||open==='support'){(typeof openChat==='function')?openChat():openScreen('chat');}
-    else if(open==='order'||open==='orders'||open==='payments'||open==='delivery'||open==='account'){(typeof openPayHistory==='function')?openPayHistory():openScreen('wallet');}
+    else if(open==='order'||open==='orders'||open==='payments'||open==='delivery'){(typeof openPayHistory==='function')?openPayHistory():openScreen('wallet');}
+    else if(open==='account'){(typeof openProfile==='function')?openProfile():openScreen('profile');}
     else if(open==='points'||open==='reward'||open==='mission'){openScreen('points');}
     else if(open==='wallet'||open==='credit'||open==='recharge'){openScreen('wallet');}
     else if(open==='listing'||open==='marketplace'){openScreen('marketplace');}

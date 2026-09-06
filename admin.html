@@ -3686,7 +3686,7 @@ async function openReportListing(listingId,sellerId){
       ? '<video src="'+m.url+'" controls playsinline style="width:100%;border-radius:12px;margin-bottom:8px;background:#000"></video>'
       : '<img src="'+m.url+'" onclick="window.open(\''+m.url+'\')" style="width:100%;border-radius:12px;margin-bottom:8px;cursor:pointer"/>';
   }).join('')||'<div style="color:var(--text3);font-size:12px;padding:8px 0">Aucun média</div>';
-  var st=u.status||'active';
+  var st=u.accountStatus||'active';
   var stTag=st==='suspended'?'<span style="color:var(--orange)">⏸ Suspendu</span>':st==='blocked'?'<span style="color:var(--red)">🚫 Bloqué</span>':'<span style="color:var(--green)">✓ Actif</span>';
   var sellBan=!!u.sellBanned;
   var sellUntil=(u.sellBannedUntil&&u.sellBannedUntil.toDate)?u.sellBannedUntil.toDate().toLocaleDateString('fr-FR'):'';
@@ -3749,7 +3749,7 @@ async function mfSetStatus(uid,status){
   if(!confirm('Confirmer : '+lbl+' ce compte ?'))return;
   var ms=(status==='suspended')?_rlUntilMs():0;
   try{
-    var payload={status:status};
+    var payload={accountStatus:status,statusUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()};
     payload.suspendUntil=(status==='suspended'&&ms)?firebase.firestore.Timestamp.fromMillis(ms):null;
     await db.collection('users').doc(uid).set(payload,{merge:true});
     var body=status==='active'?'Votre compte est réactivé. 🎉':status==='suspended'?('Votre compte est suspendu'+(ms?(' jusqu\'au '+new Date(ms).toLocaleDateString('fr-FR')):'')+'.'):'Votre compte a été bloqué. Contactez le support.';
