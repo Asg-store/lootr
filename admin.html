@@ -3653,7 +3653,7 @@ async function loadReports(){
         +(r.details?'<div style="font-size:12.5px;color:var(--text2);margin-top:4px;line-height:1.5">« '+esc(r.details)+' »</div>':'')
         +'<div style="font-size:11.5px;color:var(--text3);margin-top:6px">Par '+esc(r.reporterName||'client')+(r.reporterEmail?(' · '+esc(r.reporterEmail)):'')+(d?(' · '+d):'')+'</div>'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
-          +'<button onclick="openAdminListing(\''+r.listingId+'\')" style="padding:7px 11px;border:1px solid var(--border);border-radius:9px;background:var(--bg3);color:var(--text);font-size:12px;font-weight:700">👁 Voir l\'annonce</button>'
+          +'<button onclick="openReportListing(\''+r.listingId+'\',\''+(r.sellerId||'')+'\')" style="padding:7px 11px;border:1px solid var(--border);border-radius:9px;background:var(--bg3);color:var(--text);font-size:12px;font-weight:700">👁 Voir & modérer</button>'
           +(done?'':'<button onclick="markReportDone(\''+r.id+'\')" style="padding:7px 11px;border:none;border-radius:9px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#052;font-size:12px;font-weight:700">✅ Marquer traité</button>')
           +'<button onclick="deleteReportedListing(\''+r.listingId+'\',\''+r.id+'\')" style="padding:7px 11px;border:none;border-radius:9px;background:linear-gradient(135deg,#ff5a5a,#c0392b);color:#fff;font-size:12px;font-weight:700">🗑 Supprimer l\'annonce</button>'
           +'<button onclick="deleteReport(\''+r.id+'\')" style="padding:7px 11px;border:1px solid var(--border);border-radius:9px;background:var(--bg3);color:var(--text2);font-size:12px;font-weight:700">Effacer</button>'
@@ -3661,9 +3661,108 @@ async function loadReports(){
     }).join('');
   }catch(e){el.innerHTML='<p style="color:var(--red);font-size:13px;padding:12px">Erreur : '+(e.message||e)+'</p>';}
 }
-function openAdminListing(id){
-  // Ouvre l'annonce concernée sur le site public dans un nouvel onglet
-  try{ window.open('index.html?open=marketplace&acc='+encodeURIComponent(id),'_blank'); }catch(e){}
+var _rlLid='',_rlSid='';
+// 👁🛡️ Voir l'annonce signalée + modérer le vendeur
+async function openReportListing(listingId,sellerId){
+  _rlLid=listingId||'';_rlSid=sellerId||'';
+  var ov=document.getElementById('rl-ov');
+  if(!ov){
+    ov=document.createElement('div');ov.id='rl-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
+    ov.onclick=function(e){if(e.target===ov)ov.style.display='none';};
+    ov.innerHTML='<div id="rl-card" style="background:var(--bg2);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px"></div>';
+    document.body.appendChild(ov);
+  }
+  var card=document.getElementById('rl-card');
+  card.innerHTML='<p style="color:var(--text2);font-size:13px">Chargement…</p>';
+  ov.style.display='flex';
+  var a={},u={};
+  try{var ad=await db.collection('accounts').doc(listingId).get();a=ad.exists?Object.assign({id:ad.id},ad.data()):{};}catch(e){}
+  if(!sellerId&&a.userId){sellerId=a.userId;_rlSid=sellerId;}
+  try{if(sellerId){var ud=await db.collection('users').doc(sellerId).get();u=ud.exists?Object.assign({id:ud.id},ud.data()):{};}}catch(e){}
+  var esc=function(s){return (''+(s==null?'':s)).replace(/</g,'&lt;');};
+  var media=(a.media||[]).map(function(m){
+    return m.type==='video'
+      ? '<video src="'+m.url+'" controls playsinline style="width:100%;border-radius:12px;margin-bottom:8px;background:#000"></video>'
+      : '<img src="'+m.url+'" onclick="window.open(\''+m.url+'\')" style="width:100%;border-radius:12px;margin-bottom:8px;cursor:pointer"/>';
+  }).join('')||'<div style="color:var(--text3);font-size:12px;padding:8px 0">Aucun média</div>';
+  var st=u.status||'active';
+  var stTag=st==='suspended'?'<span style="color:var(--orange)">⏸ Suspendu</span>':st==='blocked'?'<span style="color:var(--red)">🚫 Bloqué</span>':'<span style="color:var(--green)">✓ Actif</span>';
+  var sellBan=!!u.sellBanned;
+  var sellUntil=(u.sellBannedUntil&&u.sellBannedUntil.toDate)?u.sellBannedUntil.toDate().toLocaleDateString('fr-FR'):'';
+  var B='display:block;width:100%;box-sizing:border-box;padding:12px;margin-top:8px;border:none;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;color:#fff';
+  var titleSafe=(a.title||'').replace(/['"\\<>\n\r]/g,' ');
+  var rows='';
+  function row(l,v){return v?('<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">'+l+'</span><b style="text-align:right;word-break:break-word">'+esc(v)+'</b></div>'):'';}
+  rows+=row('Jeu',a.game);
+  rows+=row('Prix',(a.priceRaw!=null?a.priceRaw+' '+(a.priceCur||'').toUpperCase():(a.price!=null?a.price+' €':'')));
+  rows+=row('Niveau',a.level);rows+=row('N° Collection',a.rank);
+  rows+=row('Statut annonce',a.status);rows+=row('Vues',a.views||0);
+  rows+=row('Orange Money',a.omNumber);rows+=row('Wave',a.waveNumber);
+  rows+=row('Contact',a.contact);
+  card.innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:16px">👁 Annonce signalée</b><span onclick="document.getElementById(\'rl-ov\').style.display=\'none\'" style="font-size:22px;cursor:pointer;color:var(--text3)">✕</span></div>'
+    +'<div style="font-weight:800;font-size:17px;margin-bottom:2px">'+esc(a.title||'Annonce')+'</div>'
+    +(a.desc?'<div style="font-size:12.5px;color:var(--text2);margin-bottom:10px;line-height:1.5">'+esc(a.desc)+'</div>':'')
+    +media
+    +'<div style="margin:6px 0 4px">'+rows+'</div>'
+    +'<div style="margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--bg3)">'
+      +'<div style="font-weight:800;font-size:14px;margin-bottom:6px">🛡️ Vendeur</div>'
+      +'<div style="font-size:13px;line-height:1.8">Nom : <b>'+esc(u.name||u.displayName||a.userName||'—')+'</b><br>Email : <b>'+esc(u.email||'—')+'</b><br>Compte : '+stTag+'<br>Vente : '+(sellBan?('<span style="color:var(--red)">🚫 Bloquée'+(sellUntil?(' jusqu\'au '+sellUntil):'')+'</span>'):'<span style="color:var(--green)">✓ Autorisée</span>')+'</div>'
+      +(sellerId?(
+          '<label style="display:block;font-size:11px;color:var(--text3);margin:12px 0 4px">Bloquer/suspendre jusqu\'au (optionnel) :</label>'
+          +'<input type="date" id="rl-until" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text)"/>'
+          +(sellBan
+              ? '<button onclick="mfSellUnban(\''+sellerId+'\')" style="'+B+';background:linear-gradient(135deg,#00e676,#00b0ff);color:#052">✅ Débloquer la vente</button>'
+              : '<button onclick="mfSellBan(\''+sellerId+'\')" style="'+B+';background:linear-gradient(135deg,#ff9500,#ff5a5a)">🚫 Bloquer la vente</button>')
+          +(st==='active'
+              ? '<button onclick="mfSetStatus(\''+sellerId+'\',\'suspended\')" style="'+B+';background:linear-gradient(135deg,#f5a623,#e67e22)">⏸ Suspendre le compte</button>'
+                +'<button onclick="mfSetStatus(\''+sellerId+'\',\'blocked\')" style="'+B+';background:linear-gradient(135deg,#ff5a5a,#c0392b)">🚫 Bloquer le compte</button>'
+              : '<button onclick="mfSetStatus(\''+sellerId+'\',\'active\')" style="'+B+';background:linear-gradient(135deg,#00e676,#00b0ff);color:#052">▶️ Réactiver le compte</button>')
+          +'<button onclick="mfWarn(\''+sellerId+'\',\''+titleSafe+'\')" style="'+B+';background:linear-gradient(135deg,#7c3aed,#00b0ff)">⚠️ Avertir (vérifier sous 3 jours)</button>'
+        ):'<div style="color:var(--text3);font-size:12px;margin-top:8px">Vendeur inconnu (annonce sans propriétaire).</div>')
+    +'</div>'
+    +'<button onclick="deleteReportedListing(\''+listingId+'\',\'\')" style="'+B+';background:var(--bg3);color:var(--red);border:1px solid var(--red)">🗑 Supprimer cette annonce</button>'
+    +'<div style="height:10px"></div>';
+}
+function _rlUntilMs(){var dv=(document.getElementById('rl-until')||{}).value||'';if(!dv)return 0;var t=new Date(dv+'T23:59:59').getTime();return t>Date.now()?t:0;}
+async function mfSellBan(uid){
+  if(!uid)return;
+  var ms=_rlUntilMs();var until=ms?firebase.firestore.Timestamp.fromMillis(ms):null;var dv=(document.getElementById('rl-until')||{}).value||'';
+  try{
+    await db.collection('users').doc(uid).set({sellBanned:true,sellBannedUntil:until},{merge:true});
+    try{notifyUser(uid,{icon:'🚫',title:'Vente bloquée',body:'Votre droit de vendre sur LootR a été bloqué'+(dv?(' jusqu\'au '+dv):'')+'. Contactez le support pour plus d\'informations.',type:'account'});}catch(e){}
+    toast('🚫 Vente bloquée');openReportListing(_rlLid,uid);
+  }catch(e){toast('❌ '+e.message,true);}
+}
+async function mfSellUnban(uid){
+  if(!uid)return;
+  try{
+    await db.collection('users').doc(uid).set({sellBanned:false,sellBannedUntil:null},{merge:true});
+    try{notifyUser(uid,{icon:'✅',title:'Vente débloquée',body:'Bonne nouvelle : vous pouvez de nouveau vendre sur LootR. 🎉',type:'account'});}catch(e){}
+    toast('✅ Vente débloquée');openReportListing(_rlLid,uid);
+  }catch(e){toast('❌ '+e.message,true);}
+}
+async function mfSetStatus(uid,status){
+  if(!uid)return;
+  var lbl={active:'réactiver',suspended:'suspendre',blocked:'bloquer'}[status]||status;
+  if(!confirm('Confirmer : '+lbl+' ce compte ?'))return;
+  var ms=(status==='suspended')?_rlUntilMs():0;
+  try{
+    var payload={status:status};
+    payload.suspendUntil=(status==='suspended'&&ms)?firebase.firestore.Timestamp.fromMillis(ms):null;
+    await db.collection('users').doc(uid).set(payload,{merge:true});
+    var body=status==='active'?'Votre compte est réactivé. 🎉':status==='suspended'?('Votre compte est suspendu'+(ms?(' jusqu\'au '+new Date(ms).toLocaleDateString('fr-FR')):'')+'.'):'Votre compte a été bloqué. Contactez le support.';
+    try{notifyUser(uid,{icon:status==='active'?'✅':'⏸',title:'Statut du compte',body:body,type:'account'});}catch(e){}
+    toast('✅ Compte '+({active:'réactivé',suspended:'suspendu',blocked:'bloqué'}[status]||status));openReportListing(_rlLid,uid);
+  }catch(e){toast('❌ '+e.message,true);}
+}
+async function mfWarn(uid,title){
+  if(!uid)return;
+  try{
+    notifyUser(uid,{icon:'⚠️',title:'Avertissement LootR',body:'Votre annonce'+(title?(' « '+title+' »'):'')+' doit être vérifiée / corrigée sous 3 jours. Sans action de votre part, elle pourra être suspendue ou bloquée.',type:'account'});
+    toast('⚠️ Avertissement envoyé au vendeur');
+  }catch(e){toast('❌ '+e.message,true);}
 }
 async function markReportDone(id){
   try{ await db.collection('reports').doc(id).set({status:'reviewed',reviewedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); toast('✅ Signalement traité'); loadReports(); }catch(e){toast('❌ '+e.message,true);}

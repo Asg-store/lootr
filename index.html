@@ -7502,10 +7502,10 @@ function mpConfirm(id){
   }
   document.getElementById('mp-confirm-card').innerHTML=
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:16px">✅ Confirmer & livrer</b><span onclick="document.getElementById(\'mp-confirm-ov\').style.display=\'none\'" style="font-size:20px;cursor:pointer;color:var(--text3)">✕</span></div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Saisissez les accès du compte « '+vEsc(o.listingTitle||'')+' ». L\'acheteur les verra dans <b>Mon profil → Mes achats</b>.</div>'
-    +'<label style="font-size:12px;color:var(--text2)">📧 Email / Identifiant du compte</label>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Saisissez les accès du compte « '+vEsc(o.listingTitle||'')+' » (obligatoires). L\'acheteur les verra dans <b>Mon profil → Mes achats</b>.</div>'
+    +'<label style="font-size:12px;color:var(--text2)">📧 Email / Identifiant du compte <span style="color:#ff5a5a">*</span></label>'
     +'<input id="mpc-login" placeholder="email ou identifiant du compte" style="width:100%;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin:5px 0 10px"/>'
-    +'<label style="font-size:12px;color:var(--text2)">🔑 Mot de passe</label>'
+    +'<label style="font-size:12px;color:var(--text2)">🔑 Mot de passe <span style="color:#ff5a5a">*</span></label>'
     +'<input id="mpc-pass" placeholder="mot de passe du compte" style="width:100%;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin:5px 0 10px"/>'
     +'<label style="font-size:12px;color:var(--text2)">📝 Autres infos (facultatif)</label>'
     +'<textarea id="mpc-notes" placeholder="Ex: email de secours, code de sécurité, instructions de connexion…" style="width:100%;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin:5px 0 10px;min-height:70px"></textarea>'
@@ -7519,7 +7519,8 @@ async function mpConfirmDo(id){
   var login=((document.getElementById('mpc-login')||{}).value||'').trim();
   var pass=((document.getElementById('mpc-pass')||{}).value||'').trim();
   var notes=((document.getElementById('mpc-notes')||{}).value||'').trim();
-  if(!login&&!pass){ if(!confirm('Aucun accès saisi. Confirmer quand même ? (l\'acheteur devra vous contacter)'))return; }
+  if(!login){ showToast('⚠️ Saisissez l\'email / identifiant du compte'); var _l=document.getElementById('mpc-login'); if(_l)_l.focus(); return; }
+  if(!pass){ showToast('⚠️ Saisissez le mot de passe du compte'); var _p=document.getElementById('mpc-pass'); if(_p)_p.focus(); return; }
   var btn=document.getElementById('mpc-btn');if(btn){btn.disabled=true;btn.textContent='⏳ Livraison…';}
   try{
     await db.collection('marketplaceOrders').doc(id).set({
@@ -8053,6 +8054,16 @@ function toggleInstantFields(on){
 })();
 async function submitAccount(){
   if(!currentUser){openAuthModal();return;}
+  // 🚫 Vendeur bloqué par l'admin ? → publication interdite
+  try{
+    var _us=await db.collection('users').doc(currentUser.uid).get();
+    var _ud=(_us.exists&&_us.data())||{};
+    var _until=(_ud.sellBannedUntil&&_ud.sellBannedUntil.toMillis)?_ud.sellBannedUntil.toMillis():0;
+    if(_ud.sellBanned && (!_until || _until>Date.now())){
+      showToast('🚫 Votre droit de vendre est bloqué'+(_until?(' jusqu\'au '+new Date(_until).toLocaleDateString('fr-FR')):'')+'. Contactez le support.');
+      return;
+    }
+  }catch(e){}
   const title=document.getElementById('sell-title').value.trim();
   const priceRaw=parseFloat(document.getElementById('sell-price').value);
   const priceCur=((document.getElementById('sell-price-cur')||{}).value)||'xof';
