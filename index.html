@@ -7963,13 +7963,17 @@ function openSell(){
   openScreen('sell');renderSellMedia();
   renderSellFormBan();
 }
-// Affiche le bandeau bloqué/suspendu en haut du formulaire de vente et bloque le bouton si besoin
+// Affiche le bandeau bloqué/suspendu. Si bloqué/suspendu → CACHE tout le formulaire (écran plein).
 function renderSellFormBan(){
-  var b=document.getElementById('sell-ban-banner');if(b)b.innerHTML=sellBanBannerHTML();
-  var sb=document.getElementById('sell-submit');
-  if(sb){
-    if(sellBanned()){ sb.disabled=true; sb.style.opacity='.5'; sb.style.pointerEvents='none'; sb.textContent='🚫 Vente indisponible'; }
-    else { sb.disabled=false; sb.style.opacity=''; sb.style.pointerEvents=''; }
+  var body=document.querySelector('#screen-sell .screen-body');
+  var b=document.getElementById('sell-ban-banner');
+  var banned=sellBanned();
+  if(b)b.innerHTML=banned?sellBanBannerHTML():'';
+  if(body){
+    Array.prototype.forEach.call(body.children,function(ch){
+      if(ch.id==='sell-ban-banner')return;   // le bandeau reste toujours visible
+      ch.style.display=banned?'none':'';       // on masque / réaffiche tout le reste du formulaire
+    });
   }
 }
 // ✏️ Modifier une annonce existante (le vendeur uniquement)
@@ -7990,7 +7994,7 @@ function editListing(id){
   const inst=document.getElementById('sell-instant');if(inst){inst.checked=!!a.instantDelivery;toggleInstantFields(!!a.instantDelivery);}
   document.getElementById('ai-price-box').style.display='none';
   const sb=document.getElementById('sell-submit');if(sb)sb.textContent='💾 Enregistrer les modifications';
-  closeScreen('account');openScreen('sell');renderSellMedia();
+  closeScreen('account');openScreen('sell');renderSellMedia();renderSellFormBan();
   showToast('✏️ Modifiez puis enregistrez');
 }
 // 🗑 Supprimer sa propre annonce
