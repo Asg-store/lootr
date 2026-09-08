@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-//  LootR — /api/send-push  (Fonction serverless Vercel, Node.js)
+//  MgLoot — /api/send-push  (Fonction serverless Vercel, Node.js)
 //  Envoie une VRAIE notification push FCM aux appareils d'un client,
 //  même quand l'application est complètement fermée.
 //
@@ -44,9 +44,9 @@ module.exports = async (req, res) => {
       const KEY = process.env.GEMINI_API_KEY;
       if (!KEY) return res.status(200).json({ reply: '', err: 'GEMINI_API_KEY absente sur Vercel' });
       const ctx = String(_b.context || '').slice(0, 5000);
-      const sys = "Tu es l'assistant virtuel de LootR, une application de recharges de jeux et marketplace. "
-        + "LootR propose : recharges (UC PUBG Mobile, diamants Free Fire, CP Call of Duty, etc.), vente de comptes de jeu entre particuliers (Marketplace), une Boutique VPN, des points de fidélité, un portefeuille LootR, et un système de parrainage. "
-        + "Moyens de paiement : Orange Money, Wave, PayPal, carte bancaire, et le portefeuille LootR. Après paiement validé, la livraison est automatique et rapide (UC/diamants livrés sur l'ID joueur ; identifiants de compte remis dans l'app). "
+      const sys = "Tu es l'assistant virtuel de MgLoot, une application de recharges de jeux et marketplace. "
+        + "MgLoot propose : recharges (UC PUBG Mobile, diamants Free Fire, CP Call of Duty, etc.), vente de comptes de jeu entre particuliers (Marketplace), une Boutique VPN, des points de fidélité, un portefeuille MgLoot, et un système de parrainage. "
+        + "Moyens de paiement : Orange Money, Wave, PayPal, carte bancaire, et le portefeuille MgLoot. Après paiement validé, la livraison est automatique et rapide (UC/diamants livrés sur l'ID joueur ; identifiants de compte remis dans l'app). "
         + "RÈGLE : réponds TOI-MÊME, utilement et directement, à TOUTES les questions courantes (prix, produits, jeux, comment acheter/recharger/vendre, paiement, livraison, VPN, points, portefeuille, parrainage). "
         + "NE dis PAS « tapez admin » à la fin de tes réponses normales. Ne propose « admin » QUE dans 2 cas : (1) le client demande explicitement un humain/conseiller/administrateur ; (2) problème grave que tu ne peux pas résoudre (paiement débité sans livraison, remboursement, commande payée non reçue, compte piraté/suspendu, litige avec un vendeur). Dans tous les autres cas, réponds simplement SANS jamais mentionner l'admin. "
         + "Réponds TRÈS COURT (2 à 3 phrases max), dans la langue du client, poliment, 1 emoji max. Ne promets jamais de remboursement ou d'action que seul un humain peut faire. "
@@ -112,7 +112,7 @@ module.exports = async (req, res) => {
     if (payload.email && payload.email.to) {
       try {
         const { sendEmail } = require('./_email.js');
-        emailSent = await sendEmail(payload.email.to, payload.email.subject || 'LootR', payload.email.html || '');
+        emailSent = await sendEmail(payload.email.to, payload.email.subject || 'MgLoot', payload.email.html || '');
       } catch (e) { emailSent = false; }
     }
     // Mode "email seul" : pas de push, on répond tout de suite.
@@ -133,8 +133,8 @@ module.exports = async (req, res) => {
     if (!tokens.length) return res.status(200).json({ ok: true, sent: 0, note: 'aucun appareil enregistré' });
 
     // ── Lien ABSOLU (obligatoire pour le Web Push : FCM refuse un lien relatif) ──
-    // On dérive l'origine du site depuis la requête, sinon on retombe sur lootr.cc.
-    const _host = (req.headers['x-forwarded-host'] || req.headers.host || 'lootr.cc').split(',')[0].trim();
+    // On dérive l'origine du site depuis la requête, sinon on retombe sur mgloot.com.
+    const _host = (req.headers['x-forwarded-host'] || req.headers.host || 'mgloot.com').split(',')[0].trim();
     const _origin = 'https://' + _host.replace(/^https?:\/\//, '');
     // URL d'ouverture : /?open=<type> → l'app ouvre directement la bonne section.
     const _openUrl = _origin + '/?open=' + encodeURIComponent(String(type || ''));
@@ -144,7 +144,7 @@ module.exports = async (req, res) => {
     const base = {
       // data → utilisé au premier plan (onMessage) et pour le routage
       data: {
-        title: String(title || 'LootR'),
+        title: String(title || 'MgLoot'),
         body: String(body || ''),
         url: _openUrl,
         type: String(type || ''),
@@ -165,7 +165,7 @@ module.exports = async (req, res) => {
           TTL: '86400'
         },
         notification: {
-          title: String(title || 'LootR'),
+          title: String(title || 'MgLoot'),
           body: String(body || ''),
           icon: _iconUrl,
           badge: _badgeUrl,
