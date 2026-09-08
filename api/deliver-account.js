@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-//  LootR — /api/deliver-account
+//  MgLoot — /api/deliver-account
 //
 //  Le client NE PEUT PAS lire accounts/{id}/private/credentials
 //  (règles Firestore) → d'où « Missing or insufficient permissions ».
@@ -94,7 +94,7 @@ module.exports = async (req, res) => {
           + '</div>'
           + '<p style="color:#ff9">⚠️ Changez le mot de passe dès votre première connexion, et ne partagez ces informations avec personne.</p>'
         );
-        await M.sendEmail(email, '🎁 Identifiants de votre compte — LootR', html);
+        await M.sendEmail(email, '🎁 Identifiants de votre compte — MgLoot', html);
       }
       // Notification in-app + push
       await db.collection('users').doc(userId).collection('notifications').add({
@@ -102,7 +102,7 @@ module.exports = async (req, res) => {
         type: 'account', link: 'account', read: false, createdAt: admin.firestore.FieldValue.serverTimestamp()
       }).catch(() => {});
       try {
-        const BASE = (process.env.PUBLIC_BASE_URL || 'https://lootr.cc').replace(/\/+$/, '');
+        const BASE = (process.env.PUBLIC_BASE_URL || 'https://mgloot.com').replace(/\/+$/, '');
         await fetch(BASE + '/api/send-push', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: userId, title: '🎁 Compte livré', body: 'Vos identifiants sont prêts.', url: '/' })
