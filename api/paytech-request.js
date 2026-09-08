@@ -12,7 +12,7 @@
 //    - PAYTECH_API_KEY      (clé API PayTech)
 //    - PAYTECH_API_SECRET   (clé secrète PayTech)
 //    - PAYTECH_ENV          ('test' ou 'prod', défaut 'test')
-//    - PUBLIC_BASE_URL      (ex : https://lootr.cc)  ← pour les URLs de retour/IPN
+//    - PUBLIC_BASE_URL      (ex : https://mgloot.com)  ← pour les URLs de retour/IPN
 //    - FIREBASE_SERVICE_ACCOUNT (déjà présente)
 // ════════════════════════════════════════════════════════════════
 const admin = require('firebase-admin');
@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
     const API_SECRET = process.env.PAYTECH_API_SECRET;
     if (!API_KEY || !API_SECRET) return res.status(500).json({ error: 'PayTech non configuré (clés Vercel manquantes)' });
     const ENV = (process.env.PAYTECH_ENV || 'test').toLowerCase() === 'prod' ? 'prod' : 'test';
-    const BASE = (process.env.PUBLIC_BASE_URL || 'https://lootr.cc').replace(/\/+$/, '');
+    const BASE = (process.env.PUBLIC_BASE_URL || 'https://mgloot.com').replace(/\/+$/, '');
 
     getApp();
 
@@ -62,7 +62,7 @@ module.exports = async (req, res) => {
     const xof = Math.max(100, Math.round(amountEur * EUR_XOF)); // PayTech = FCFA (XOF)
 
     // 3) Référence unique + enregistrement "pending" (pour l'IPN)
-    const refCommand = 'LOOTR-' + uid.slice(0, 6) + '-' + Date.now();
+    const refCommand = 'MGLOOT-' + uid.slice(0, 6) + '-' + Date.now();
     const db = admin.firestore();
     await db.collection('paytechPayments').doc(refCommand).set({
       uid, email, amountEur, xof, purpose, orderId: orderId || null, status: 'pending',
