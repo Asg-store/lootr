@@ -2,17 +2,17 @@
 <html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
-<meta name="google-site-verification" content="lXa7ZFv9KXP0jEtS1NMaa5Kj5X0EeYVj3iC_Yxt7t1c" />
+<meta name="google-site-verification" content="1xaZ7F9SKXPojETsIMNaa5KJ5X0E8eVYj3iC_Yxt7tiC" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>MgLoot Mali — Recharge UC PUBG, Diamants Free Fire, Comptes Gaming & VPN</title>
-<meta name="description" content="MgLoot : rechargez UC PUBG Mobile, Diamants Free Fire, achetez et vendez des comptes gaming vérifiés, cartes cadeaux et fichiers VPN au Mali. Paiement Orange Money, Wave, Moov. Livraison rapide et sécurisée."/>
-<meta name="keywords" content="recharge UC Mali, UC PUBG Mali, diamants Free Fire Mali, acheter compte PUBG, vendre compte gaming, carte cadeau, VPN Mali, Orange Money, Wave, MgLoot"/>
+<title>Recharge UC PUBG & Diamants Free Fire Compte gaming & VPN | MgLoot</title>
+<meta name="description" content="Rechargez UC PUBG Mobile et Diamants Free Fire et autres jeux, achetez/vendez des comptes de jeux, et VPN pour stabiliser le ping. Paiement Orange Money, Wave, Moov et autres. Livraison instantanée 24h/24, rapide et sécurisée."/>
+<meta name="keywords" content="recharge UC Mali, UC PUBG Mali, diamants Free Fire, autre, MgLoot"/>
 <meta name="robots" content="index,follow"/>
 <meta name="theme-color" content="#070b18"/>
 <meta property="og:type" content="website"/>
-<meta property="og:title" content="MgLoot Mali — Recharge UC, Diamants, Comptes Gaming & VPN"/>
+<meta property="og:title" content="MgLoot — Recharge UC, Diamants, Comptes Gaming & VPN"/>
 <meta property="og:description" content="Rechargez UC, Diamants, achetez/vendez des comptes gaming, cartes cadeaux et VPN au Mali. Paiement Orange Money & Wave. Rapide et sécurisé."/>
 <link rel="icon" type="image/png" href="/favicon.png?v=3"/>
 <link rel="apple-touch-icon" href="/icon-192.png?v=3"/>
@@ -21,10 +21,20 @@
 <meta property="og:image:height" content="630"/>
 <meta property="og:url" content="https://mgloot.com/"/>
 <link rel="canonical" href="https://mgloot.com/"/>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "MgLoot",
+  "url": "https://mgloot.com/",
+  "logo": "https://mgloot.com/icon-192.png",
+  "description": "Recharge jeux vidéo: UC PUBG, Diamants Free Fire et autre. Paiement au Mali Orange Money, Wave, Moov. Livraison instantanée."
+}
+</script>
 <meta property="og:site_name" content="MgLoot"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:image" content="https://mgloot.com/og-image.png"/>
-<meta name="twitter:title" content="MgLoot Mali — Recharge UC, Diamants, Comptes Gaming & VPN"/>
+<meta name="twitter:title" content="MgLoot — Recharge UC, Diamants, Comptes Gaming & VPN"/>
 <meta name="twitter:description" content="Recharge UC PUBG, Diamants Free Fire, comptes gaming vérifiés, cartes cadeaux & VPN au Mali."/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -2976,9 +2986,9 @@ function isAppInstalled(){
 // Partager la boutique (WhatsApp/partage natif) puis valider la mission « partage »
 async function shareShop(){
   var url='https://mgloot.com/';
-  var txt='🎮 Découvre MgLoot Mali ! Recharge UC PUBG, Diamants Free Fire, comptes & VPN : '+url;
+  var txt='🎮 Découvre MgLoot ! Recharge UC PUBG, Diamants Free Fire, comptes & VPN : '+url;
   try{
-    if(navigator.share){await navigator.share({title:'MgLoot Mali',text:txt,url:url});}
+    if(navigator.share){await navigator.share({title:'MgLoot',text:txt,url:url});}
     else{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
   }catch(e){}
   if(currentUser){
@@ -3587,9 +3597,9 @@ function openSocial(){
 /* ✨ NOUVEAU : partager la boutique (natif Android, sinon copie du lien) */
 function shareShop(){
   var url='https://mgloot.com/';
-  var txt='🎮 MgLoot Mali — Recharge UC PUBG, Diamants Free Fire, comptes gaming et VPN.\nCommandez en quelques secondes 👉 ';
+  var txt='🎮 MgLoot — Recharge UC PUBG, Diamants Free Fire, comptes gaming et VPN.\nCommandez en quelques secondes 👉 ';
   if(navigator.share){
-    navigator.share({title:'MgLoot Mali',text:txt,url:url}).catch(function(){});
+    navigator.share({title:'MgLoot',text:txt,url:url}).catch(function(){});
     return;
   }
   try{
@@ -7264,8 +7274,8 @@ function copyInviteLink(){
 }
 function shareInvite(){
   var v=document.getElementById('invite-link').value;
-  var txt='🎮 Rejoins MgLoot Mali avec mon lien ! Recharge UC, Diamants, comptes & VPN : '+v;
-  if(navigator.share){navigator.share({title:'MgLoot Mali',text:txt,url:v}).catch(function(){});}
+  var txt='🎮 Rejoins MgLoot avec mon lien ! Recharge UC, Diamants, comptes & VPN : '+v;
+  if(navigator.share){navigator.share({title:'MgLoot',text:txt,url:v}).catch(function(){});}
   else{try{navigator.clipboard.writeText(txt);showToast('✓ Message copié, colle-le sur WhatsApp !');}catch(e){}}
 }
 // À la 1ʳᵉ inscription : enregistre le parrainage puis crédite le parrain.
