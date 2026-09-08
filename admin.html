@@ -553,7 +553,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo" id="login-logo-ico"><span>◈</span></div>
-    <div class="login-title" id="login-logo-name">LootR</div>
+    <div class="login-title" id="login-logo-name">MgLoot</div>
     <div class="login-sub">Espace Administration — Connexion requise</div>
     <div class="login-field">
       <input type="email" id="login-email" placeholder="Adresse email" autocomplete="email" autocapitalize="none"/>
@@ -666,7 +666,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
   </button>
   <div class="logo-box">
     <div class="logo-ico" id="topbar-logo-ico"><span>◈</span></div>
-    <span class="logo-name" id="topbar-logo-name">LootR</span>
+    <span class="logo-name" id="topbar-logo-name">MgLoot</span>
     <span class="logo-sub">/ Admin</span>
   </div>
   <div class="top-actions">
@@ -915,15 +915,15 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
   <div class="logo-preview">
     <small>Aperçu live</small>
     <div class="logo-big" id="logo-big"><span>◈</span></div>
-    <div class="logo-shopname" id="logo-shopname">LootR</div>
+    <div class="logo-shopname" id="logo-shopname">MgLoot</div>
   </div>
   <div class="panel">
     <div class="panel-top"><span class="panel-title">⚙️ Paramètres boutique</span></div>
     <div style="padding:16px">
       <div class="form-grp">
         <label>Nom de la boutique</label>
-        <input class="inp" id="cfg-name" placeholder="Ex: LootR"
-          oninput="document.getElementById('logo-shopname').textContent=this.value||'LootR';document.getElementById('topbar-logo-name').textContent=this.value||'LootR'"/>
+        <input class="inp" id="cfg-name" placeholder="Ex: MgLoot"
+          oninput="document.getElementById('logo-shopname').textContent=this.value||'MgLoot';document.getElementById('topbar-logo-name').textContent=this.value||'MgLoot'"/>
       </div>
       <div class="form-grp">
         <label>Logo de l'application</label>
@@ -947,11 +947,11 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
       </div>
       <div class="form-grp">
         <label>✉️ Email de contact</label>
-        <input class="inp" id="cfg-email" type="email" placeholder="Ex: contact@lootr.cc"/>
+        <input class="inp" id="cfg-email" type="email" placeholder="Ex: contact@mgloot.com"/>
       </div>
       <div class="form-grp">
         <label>✈️ Telegram</label>
-        <input class="inp" id="cfg-tg" placeholder="Ex: @LootRStore ou +22382131418"/>
+        <input class="inp" id="cfg-tg" placeholder="Ex: @MgLootStore ou +22382131418"/>
         <span class="hint">Ton @pseudo Telegram, ou un lien https://t.me/…, ou ton numéro.</span>
       </div>
       <button class="save-btn" onclick="saveConfig()">💾 Enregistrer les contacts</button>
@@ -1118,11 +1118,11 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
     <div class="osumm"><div class="osumm-n n-green" id="ac-approved">0</div><div class="osumm-l">Validés</div></div>
     <div class="osumm"><div class="osumm-n" style="color:var(--red)" id="ac-rejected">0</div><div class="osumm-l">Refusés</div></div>
   </div>
-  <!-- ══ PUBLIER UN COMPTE OFFICIEL LootR (vendeur = la boutique) ══ -->
+  <!-- ══ PUBLIER UN COMPTE OFFICIEL MgLoot (vendeur = la boutique) ══ -->
   <div class="panel" style="margin-bottom:14px">
-    <div class="panel-top"><span class="panel-title">🏪 Publier un compte LootR officiel</span></div>
+    <div class="panel-top"><span class="panel-title">🏪 Publier un compte MgLoot officiel</span></div>
     <div style="padding:16px">
-      <div class="upload-tip" style="margin-bottom:14px">💡 Les annonces publiées ici sont <b>validées automatiquement</b> et affichées tout de suite dans la Marketplace avec le badge « LootR Officiel ».</div>
+      <div class="upload-tip" style="margin-bottom:14px">💡 Les annonces publiées ici sont <b>validées automatiquement</b> et affichées tout de suite dans la Marketplace avec le badge « MgLoot Officiel ».</div>
       <div class="f-row">
         <div class="form-grp"><label>Jeu *</label><select class="inp" id="ao-game"></select></div>
         <div class="form-grp"><label>Prix (€) *</label><input class="inp" type="number" id="ao-price" step="0.01" min="0" placeholder="25.00"/></div>
@@ -1443,12 +1443,12 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
         • <code>PAYTECH_API_KEY</code> = votre Clé API<br>
         • <code>PAYTECH_API_SECRET</code> = votre Clé secrète<br>
         • <code>PAYTECH_ENV</code> = <code>prod</code> (ou <code>test</code>)<br>
-        • <code>PUBLIC_BASE_URL</code> = <code>https://lootr.cc</code><br>
+        • <code>PUBLIC_BASE_URL</code> = <code>https://mgloot.com</code><br>
         <br>
         Dans le tableau de bord <b>PayTech</b>, mettez :<br>
-        • IPN : <code>https://lootr.cc/api/paytech-ipn</code><br>
-        • Succès : <code>https://lootr.cc/payment/success</code><br>
-        • Annulation : <code>https://lootr.cc/payment/cancel</code><br>
+        • IPN : <code>https://mgloot.com/api/paytech-ipn</code><br>
+        • Succès : <code>https://mgloot.com/payment/success</code><br>
+        • Annulation : <code>https://mgloot.com/payment/cancel</code><br>
         <br>
         Après paiement, le portefeuille du client est <b>crédité automatiquement</b> (côté serveur, sécurisé).
       </div>
@@ -1832,7 +1832,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 <script>
-function brandName(n){return (!n||['ASG Store','Abg Store','Abg','ASG','NexShop',''].indexOf(String(n).trim())>=0)?'LootR':n;}
+function brandName(n){return (!n||['ASG Store','Abg Store','Abg','ASG','NexShop',''].indexOf(String(n).trim())>=0)?'MgLoot':n;}
 
 // 😀 Emoji couleur HORS-LIGNE : chaque emoji est entouré d'un <span class="emo">
 //    qui force la police emoji couleur de l'appareil (aucun fichier/CDN).
@@ -2241,7 +2241,7 @@ async function applyWalletAdjust(sign){
     document.getElementById('wadj-balance').textContent=amoney(cur+delta);
     document.getElementById('wadj-amount').value='';document.getElementById('wadj-note').value='';
     notifyUser(id,{icon:'💰',title:sign>0?'Portefeuille crédité':'Portefeuille ajusté',
-      body:(sign>0?'Vous avez reçu '+amt.toFixed(2)+' € sur votre portefeuille LootR.':amt.toFixed(2)+' € ont été retirés de votre portefeuille.')+(note?' ('+note+')':''),
+      body:(sign>0?'Vous avez reçu '+amt.toFixed(2)+' € sur votre portefeuille MgLoot.':amt.toFixed(2)+' € ont été retirés de votre portefeuille.')+(note?' ('+note+')':''),
       type:'wallet',link:'wallet'});
     toast(sign>0?'✓ Portefeuille crédité':'✓ Portefeuille débité');
     loadWalletHistory(id);renderClients();
@@ -2254,7 +2254,7 @@ async function toggleSeller(id,make){
     const isSeller=(make===true||make==='true');
     await db.collection('users').doc(id).set({role:isSeller?'vendeur':'client'},{merge:true});
     const c=clients.find(x=>x.id===id);if(c)c.role=isSeller?'vendeur':'client';
-    if(isSeller)notifyUser(id,{icon:'🛍️',title:'Vous êtes maintenant vendeur !',body:'Votre compte peut désormais publier des annonces sur la Marketplace LootR.',type:'info',link:'marketplace'});
+    if(isSeller)notifyUser(id,{icon:'🛍️',title:'Vous êtes maintenant vendeur !',body:'Votre compte peut désormais publier des annonces sur la Marketplace MgLoot.',type:'info',link:'marketplace'});
     toast(isSeller?'✓ Ce client est maintenant vendeur':'✓ Statut vendeur retiré');
     closeClientDetail();renderClients();
   }catch(e){toast('❌ '+e.message,true);}
@@ -2719,9 +2719,9 @@ async function updateOrderStatus(id,status){
         var _cref='CMD-'+String(id).slice(0,6).toUpperCase();
         var _email=o.email?{
           to:o.email,
-          subject:m[1]+' ('+_cref+') — LootR',
+          subject:m[1]+' ('+_cref+') — MgLoot',
           html:'<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;background:#0b0b0d;color:#eee;border-radius:14px;overflow:hidden">'
-            +'<div style="background:linear-gradient(135deg,#1c1c22,#0b0b0d);padding:20px;text-align:center"><div style="font-size:26px;font-weight:800;color:#e8c766;letter-spacing:2px">◈ LOOTR</div></div>'
+            +'<div style="background:linear-gradient(135deg,#1c1c22,#0b0b0d);padding:20px;text-align:center"><div style="font-size:26px;font-weight:800;color:#e8c766;letter-spacing:2px">◈ MGLOOT</div></div>'
             +'<div style="padding:22px;font-size:14px;line-height:1.7;color:#ddd">'
             +'<h2 style="color:#e8c766;margin:0 0 10px">'+m[0]+' '+m[1]+'</h2>'
             +'<p>Bonjour '+((_pname||'').replace(/</g,''))+',</p>'
@@ -2732,7 +2732,7 @@ async function updateOrderStatus(id,status){
             +(_pname?('<br><b>Nom joueur :</b> '+String(_pname).replace(/</g,'')):'')
             +((o.total||o.amount)?('<br><b>Total :</b> '+(((+o.total||+o.amount)||0).toFixed(2))+' €'):'')+'</div>'
             +'</div>'
-            +'<div style="padding:14px;text-align:center;font-size:11px;color:#888;border-top:1px solid #222">LootR — https://lootr.cc</div></div>'
+            +'<div style="padding:14px;text-align:center;font-size:11px;color:#888;border-top:1px solid #222">MgLoot — https://mgloot.com</div></div>'
         }:null;
         notifyUser(o.userId,{icon:m[0],title:m[1],body:m[2],type:'order',link:'order',refId:id,email:_email});
       }
@@ -3093,7 +3093,7 @@ async function saveConfig(){
   const feeType=document.getElementById('cfg-fee-type')?document.getElementById('cfg-fee-type').value:'none';
   const feeVal=parseFloat(document.getElementById('cfg-fee-value')?document.getElementById('cfg-fee-value').value:'')||0;
   const data={
-    shopName:document.getElementById('cfg-name').value.trim()||'LootR',
+    shopName:document.getElementById('cfg-name').value.trim()||'MgLoot',
     logoUrl:document.getElementById('cfg-logo').value.trim()||'',
     bannerTitle:document.getElementById('cfg-bt').value.trim()||'',
     bannerSub:document.getElementById('cfg-bs').value.trim()||'',
@@ -3234,7 +3234,7 @@ async function testPush(){
   try{
     const r=await fetch('/api/send-push',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({title:'🔔 LootR',body:'Notification de test — tout fonctionne !',url:'/'})
+      body:JSON.stringify({title:'🔔 MgLoot',body:'Notification de test — tout fonctionne !',url:'/'})
     });
     const d=await r.json().catch(()=>({}));
     if(!r.ok){st.style.color='var(--orange)';st.innerHTML='⚠️ La fonction <b>send-push</b> n\'est pas déployée.<br>Ce n\'est nécessaire QUE pour notifier les clients qui ont <b>fermé complètement l\'app</b>. Les clients qui ont l\'app ouverte ou en arrière-plan reçoivent déjà les annonces sur leur téléphone.';return;}
@@ -3359,10 +3359,10 @@ async function delPromo(id){
 /* ══ COMPTES À VENDRE (MARKETPLACE) ══ */
 let allAccounts=[],accFilter='pending';
 
-/* ══════════ PUBLIER UN COMPTE OFFICIEL LootR (marketplace) ══════════
+/* ══════════ PUBLIER UN COMPTE OFFICIEL MgLoot (marketplace) ══════════
    L'admin publie ses propres comptes à vendre. Contrairement aux annonces
    clients (status:'pending'), elles sont publiées en 'approved' → visibles
-   immédiatement, avec le drapeau isOfficial pour le badge « LootR Officiel ». */
+   immédiatement, avec le drapeau isOfficial pour le badge « MgLoot Officiel ». */
 
 /* ══════════ CLÉ IMGBB PARTAGÉE (logo, produits points, comptes, support) ══════════
    Une seule clé pour toute l'application. Stockée dans config/shop.imgbbKey. */
@@ -3589,9 +3589,9 @@ async function publishOfficialAccount(){
   if(!me){toast('❌ Reconnectez-vous',true);return;}
   var data={
     userId:me,
-    userName:'LootR',
+    userName:'MgLoot',
     userEmail:'',
-    isOfficial:true,                 // → badge « LootR Officiel » côté client
+    isOfficial:true,                 // → badge « MgLoot Officiel » côté client
     game:v('ao-game')||'autre',
     title:title,
     price:price,
@@ -3710,16 +3710,27 @@ async function openReportListing(listingId,sellerId){
       +'<div style="font-weight:800;font-size:14px;margin-bottom:6px">🛡️ Vendeur</div>'
       +'<div style="font-size:13px;line-height:1.8">Nom : <b>'+esc(u.name||u.displayName||a.userName||'—')+'</b><br>Email : <b>'+esc(u.email||'—')+'</b><br>Compte : '+stTag+'<br>Vente : '+(sellBan?('<span style="color:var(--red)">🚫 Bloquée'+(sellUntil?(' jusqu\'au '+sellUntil):'')+'</span>'):'<span style="color:var(--green)">✓ Autorisée</span>')+'</div>'
       +(sellerId?(
-          '<label style="display:block;font-size:11px;color:var(--text3);margin:12px 0 4px">Bloquer/suspendre jusqu\'au (optionnel) :</label>'
-          +'<input type="date" id="rl-until" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text)"/>'
+          // ═══ ESPACE VENDEUR (vente uniquement) ═══
+          '<div style="font-size:11px;font-weight:800;color:var(--text3);letter-spacing:.5px;margin:16px 0 6px">🛒 ESPACE VENDEUR (VENTE)</div>'
+          +'<label style="display:block;font-size:11px;color:var(--text3);margin:0 0 4px">Date de fin (pour une suspension temporaire de la vente ou du compte) :</label>'
+          +'<input type="date" id="rl-until" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);margin-bottom:8px"/>'
           +(sellBan
-              ? '<button onclick="mfSellUnban(\''+sellerId+'\')" style="'+B+';background:linear-gradient(135deg,#00e676,#00b0ff);color:#052">✅ Débloquer la vente</button>'
-              : '<button onclick="mfSellBan(\''+sellerId+'\')" style="'+B+';background:linear-gradient(135deg,#ff9500,#ff5a5a)">🚫 Bloquer la vente</button>')
+              ? '<button onclick="mfSellUnban(\''+sellerId+'\')" style="'+B+';margin-top:0;background:linear-gradient(135deg,#00e676,#00b0ff);color:#052">✅ Débloquer la vente</button>'
+              : '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+                  +'<button onclick="mfSellBan(\''+sellerId+'\')" style="flex:1;min-width:150px;box-sizing:border-box;padding:12px;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#ff9500,#ff5a5a)">🚫 Bloquer la vente</button>'
+                  +'<button onclick="mfSellSuspend(\''+sellerId+'\')" style="flex:1;min-width:150px;box-sizing:border-box;padding:12px;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#f5a623,#e67e22)">⏸ Suspendre la vente</button>'
+                +'</div>')
+          // ═══ COMPTE (accès à toute l'app) ═══
+          +'<div style="font-size:11px;font-weight:800;color:var(--text3);letter-spacing:.5px;margin:18px 0 6px">👤 COMPTE (ACCÈS À L\'APP)</div>'
           +(st==='active'
-              ? '<button onclick="mfSetStatus(\''+sellerId+'\',\'suspended\')" style="'+B+';background:linear-gradient(135deg,#f5a623,#e67e22)">⏸ Suspendre le compte</button>'
-                +'<button onclick="mfSetStatus(\''+sellerId+'\',\'blocked\')" style="'+B+';background:linear-gradient(135deg,#ff5a5a,#c0392b)">🚫 Bloquer le compte</button>'
-              : '<button onclick="mfSetStatus(\''+sellerId+'\',\'active\')" style="'+B+';background:linear-gradient(135deg,#00e676,#00b0ff);color:#052">▶️ Réactiver le compte</button>')
-          +'<button onclick="mfWarn(\''+sellerId+'\',\''+titleSafe+'\')" style="'+B+';background:linear-gradient(135deg,#7c3aed,#00b0ff)">⚠️ Avertir (vérifier sous 3 jours)</button>'
+              ? '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+                  +'<button onclick="mfSetStatus(\''+sellerId+'\',\'suspended\')" style="flex:1;min-width:150px;box-sizing:border-box;padding:12px;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#f5a623,#e67e22)">⏸ Suspendre le compte</button>'
+                  +'<button onclick="mfSetStatus(\''+sellerId+'\',\'blocked\')" style="flex:1;min-width:150px;box-sizing:border-box;padding:12px;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#ff5a5a,#c0392b)">🚫 Bloquer le compte</button>'
+                +'</div>'
+              : '<button onclick="mfSetStatus(\''+sellerId+'\',\'active\')" style="'+B+';margin-top:0;background:linear-gradient(135deg,#00e676,#00b0ff);color:#052">▶️ Réactiver le compte</button>')
+          // ═══ AUTRE ═══
+          +'<div style="font-size:11px;font-weight:800;color:var(--text3);letter-spacing:.5px;margin:18px 0 6px">✉️ AUTRE</div>'
+          +'<button onclick="mfWarn(\''+sellerId+'\',\''+titleSafe+'\')" style="'+B+';margin-top:0;background:linear-gradient(135deg,#7c3aed,#00b0ff)">⚠️ Avertir (vérifier sous 3 jours)</button>'
         ):'<div style="color:var(--text3);font-size:12px;margin-top:8px">Vendeur inconnu (annonce sans propriétaire).</div>')
     +'</div>'
     +'<button onclick="deleteReportedListing(\''+listingId+'\',\'\')" style="'+B+';background:var(--bg3);color:var(--red);border:1px solid var(--red)">🗑 Supprimer cette annonce</button>'
@@ -3727,19 +3738,31 @@ async function openReportListing(listingId,sellerId){
 }
 function _rlUntilMs(){var dv=(document.getElementById('rl-until')||{}).value||'';if(!dv)return 0;var t=new Date(dv+'T23:59:59').getTime();return t>Date.now()?t:0;}
 async function mfSellBan(uid){
+  // 🚫 Blocage PERMANENT de la vente (espace vendeur), sans date
   if(!uid)return;
-  var ms=_rlUntilMs();var until=ms?firebase.firestore.Timestamp.fromMillis(ms):null;var dv=(document.getElementById('rl-until')||{}).value||'';
   try{
-    await db.collection('users').doc(uid).set({sellBanned:true,sellBannedUntil:until},{merge:true});
-    try{notifyUser(uid,{icon:'🚫',title:'Vente bloquée',body:'Votre droit de vendre sur LootR a été bloqué'+(dv?(' jusqu\'au '+dv):'')+'. Contactez le support pour plus d\'informations.',type:'account'});}catch(e){}
-    toast('🚫 Vente bloquée');openReportListing(_rlLid,uid);
+    await db.collection('users').doc(uid).set({sellBanned:true,sellBannedUntil:null},{merge:true});
+    try{notifyUser(uid,{icon:'🚫',title:'Vente bloquée',body:'Votre espace vendeur a été bloqué. Vous ne pouvez plus publier d\'annonce. Contactez le support pour plus d\'informations.',type:'account'});}catch(e){}
+    toast('🚫 Vente bloquée (espace vendeur)');openReportListing(_rlLid,uid);
+  }catch(e){toast('❌ '+e.message,true);}
+}
+async function mfSellSuspend(uid){
+  // ⏸ Suspension TEMPORAIRE de la vente (avec date) — n'affecte PAS l'accès au compte
+  if(!uid)return;
+  var ms=_rlUntilMs();
+  if(!ms){toast('⚠️ Choisissez d\'abord une date de fin',true);var d=document.getElementById('rl-until');if(d)d.focus();return;}
+  var dv=(document.getElementById('rl-until')||{}).value||'';
+  try{
+    await db.collection('users').doc(uid).set({sellBanned:true,sellBannedUntil:firebase.firestore.Timestamp.fromMillis(ms)},{merge:true});
+    try{notifyUser(uid,{icon:'⏸',title:'Vente suspendue',body:'Votre espace vendeur est suspendu jusqu\'au '+dv+'. Vous pourrez revendre automatiquement après cette date.',type:'account'});}catch(e){}
+    toast('⏸ Vente suspendue jusqu\'au '+dv);openReportListing(_rlLid,uid);
   }catch(e){toast('❌ '+e.message,true);}
 }
 async function mfSellUnban(uid){
   if(!uid)return;
   try{
     await db.collection('users').doc(uid).set({sellBanned:false,sellBannedUntil:null},{merge:true});
-    try{notifyUser(uid,{icon:'✅',title:'Vente débloquée',body:'Bonne nouvelle : vous pouvez de nouveau vendre sur LootR. 🎉',type:'account'});}catch(e){}
+    try{notifyUser(uid,{icon:'✅',title:'Vente débloquée',body:'Bonne nouvelle : vous pouvez de nouveau vendre sur MgLoot. 🎉',type:'account'});}catch(e){}
     toast('✅ Vente débloquée');openReportListing(_rlLid,uid);
   }catch(e){toast('❌ '+e.message,true);}
 }
@@ -3760,7 +3783,7 @@ async function mfSetStatus(uid,status){
 async function mfWarn(uid,title){
   if(!uid)return;
   try{
-    notifyUser(uid,{icon:'⚠️',title:'Avertissement LootR',body:'Votre annonce'+(title?(' « '+title+' »'):'')+' doit être vérifiée / corrigée sous 3 jours. Sans action de votre part, elle pourra être suspendue ou bloquée.',type:'account'});
+    notifyUser(uid,{icon:'⚠️',title:'Avertissement MgLoot',body:'Votre annonce'+(title?(' « '+title+' »'):'')+' doit être vérifiée / corrigée sous 3 jours. Sans action de votre part, elle pourra être suspendue ou bloquée.',type:'account'});
     toast('⚠️ Avertissement envoyé au vendeur');
   }catch(e){toast('❌ '+e.message,true);}
 }
@@ -3988,7 +4011,7 @@ async function sendReply(){
     await c.set({lastMsg:text,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       unreadUser:firebase.firestore.FieldValue.increment(1),unreadAdmin:0},{merge:true});
     // 🔔 Notification ciblée + message dans la liste de notifications du client
-    notifyUser(curConvUid,{icon:'💬',title:'Message du support LootR',body:text,type:'message',link:'message'});
+    notifyUser(curConvUid,{icon:'💬',title:'Message du support MgLoot',body:text,type:'message',link:'message'});
   }catch(e){toast('❌ '+e.message,true);inp.value=text;}
 }
 // Envoie une notification push : userId fourni = ciblé ; sinon = diffusion à tous
@@ -4010,7 +4033,7 @@ function notifyUser(uid,n){
   if(!uid||!n)return;
   var doc={
     icon:n.icon||'🔔',
-    title:n.title||'LootR',
+    title:n.title||'MgLoot',
     body:n.body||'',
     type:n.type||'info',
     link:n.link||n.type||'detail',
@@ -4021,7 +4044,7 @@ function notifyUser(uid,n){
   };
   try{ db.collection('users').doc(uid).collection('notifications').add(doc).catch(function(){}); }catch(e){}
   // push système (app fermée / arrière-plan) + email optionnel (n.email) + type pour ouverture directe
-  pushNotif((n.icon?n.icon+' ':'')+(n.title||'LootR'),n.body||'',uid,n.email||null,(n.link||n.type||''));
+  pushNotif((n.icon?n.icon+' ':'')+(n.title||'MgLoot'),n.body||'',uid,n.email||null,(n.link||n.type||''));
 }
 // Admin envoie une photo / vidéo / fichier au client
 async function sendReplyMedia(e){
@@ -4037,7 +4060,7 @@ async function sendReplyMedia(e){
     await c.collection('messages').add({from:'admin',text:'',media,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     await c.set({lastMsg:label,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       unreadUser:firebase.firestore.FieldValue.increment(1),unreadAdmin:0},{merge:true});
-    notifyUser(curConvUid,{icon:'💬',title:'Message du support LootR',body:label,type:'message',link:'message'});
+    notifyUser(curConvUid,{icon:'💬',title:'Message du support MgLoot',body:label,type:'message',link:'message'});
     toast('✅ Envoyé');
   }catch(err){toast('❌ Envoi impossible',true);}
 }
@@ -4074,7 +4097,7 @@ async function uploadAdminVoice(blob){
     const media={type:'audio',url,name:'Message vocal'};
     await c.collection('messages').add({from:'admin',text:'',media,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     await c.set({lastMsg:'🎤 Message vocal',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),unreadUser:firebase.firestore.FieldValue.increment(1),unreadAdmin:0},{merge:true});
-    notifyUser(curConvUid,{icon:'💬',title:'Message du support LootR',body:'🎤 Message vocal',type:'message',link:'message'});
+    notifyUser(curConvUid,{icon:'💬',title:'Message du support MgLoot',body:'🎤 Message vocal',type:'message',link:'message'});
     toast('✅ Vocal envoyé');
   }catch(e){toast('❌ Envoi impossible',true);}
 }
@@ -5091,7 +5114,7 @@ async function publishScreenAd(){
       }catch(e){}
     }
     await db.collection('screenAds').add({title:title,body:body,image:image,video:video,targetType:target,targetId:accId||'',seconds:secs,active:true,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    if(document.getElementById('sad-notif').checked)pushNotif('📢 '+title,body||'Nouvelle publicité sur LootR');
+    if(document.getElementById('sad-notif').checked)pushNotif('📢 '+title,body||'Nouvelle publicité sur MgLoot');
     ['sad-title','sad-body','sad-secs','sad-accid'].forEach(function(id){document.getElementById(id).value='';});
     document.getElementById('sad-img').value='';
     var _sv=document.getElementById('sad-vid');if(_sv)_sv.value='';
@@ -5455,7 +5478,7 @@ async function bumpPlatformVersion(){
     toast('✓ Version '+label+' publiée');loadVersionInfo();
     // 🔔 Notification système « mise à jour disponible » à tous les clients
     fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({title:'🚀 Mise à jour '+label+' disponible',body:(notes||'Une nouvelle version d\'LootR est disponible.')+' Ouvrez l\'app pour mettre à jour.'})}).catch(()=>{});
+      body:JSON.stringify({title:'🚀 Mise à jour '+label+' disponible',body:(notes||'Une nouvelle version d\'MgLoot est disponible.')+' Ouvrez l\'app pour mettre à jour.'})}).catch(()=>{});
   }catch(e){toast('❌ '+e.message,true);}
 }
 
