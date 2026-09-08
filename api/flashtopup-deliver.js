@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-//  LootR — /api/flashtopup-deliver  (Fonction serverless Vercel)
+//  MgLoot — /api/flashtopup-deliver  (Fonction serverless Vercel)
 //  Livraison AUTOMATIQUE d'une commande via l'API FlashTopup Reseller v2.
 //
 //  Body attendu (POST JSON) : { "orderId": "<id commande Firestore>" }
@@ -114,7 +114,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 //    (format "data" fiable en arrière-plan, géré par le service worker)
 async function pushToUser(db, uid, title, body) {
   try {
-    const BASE = (process.env.PUBLIC_BASE_URL || 'https://lootr.cc').replace(/\/+$/, '');
+    const BASE = (process.env.PUBLIC_BASE_URL || 'https://mgloot.com').replace(/\/+$/, '');
     await fetch(BASE + '/api/send-push', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: uid, title: title, body: body, url: '/' })
@@ -261,7 +261,7 @@ module.exports = async (req, res) => {
             + '</div>'
             + '<p>Merci pour votre confiance ! 🎮</p>'
           );
-          await sendMail(em, 'Commande ' + cref + ' livrée — LootR', html);
+          await sendMail(em, 'Commande ' + cref + ' livrée — MgLoot', html);
         }
       } catch (e) {}
     }
