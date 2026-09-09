@@ -5136,7 +5136,7 @@ async function sendResetCode(auto){
     if(/introuvable|aucun compte/i.test(msg)){
       resetErr(msg);
     }else{
-      resetErr('📧 Envoi de l\'e-mail momentanément indisponible. Réessaie dans quelques instants.');
+      resetErr('📧 '+(msg||'Envoi de l\'e-mail momentanément indisponible. Réessaie dans quelques instants.'));
     }
     if(btn){btn.disabled=false;btn.textContent='📨 Recevoir le code par e-mail';}
     return;
