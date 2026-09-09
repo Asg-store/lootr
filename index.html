@@ -2,7 +2,7 @@
 <html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
-<meta name="google-site-verification" content="7fClmbWaoArS9uWRegFJnpl4xarrDSL1GfBLMwGZUpc" />
+<meta name="google-site-verification" content="1xaZ7F9SKXPojETsIMNaa5KJ5X0E8eVYj3iC_Yxt7tiC" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -4222,8 +4222,10 @@ function startRechargeOrange(amt,method){
   </div>`;
 }
 var _rcPayMethod='orange'; // méthode manuelle en cours (orange ou wave)
+var _rcProofFile=null;     // 📸 capture de paiement retenue (fiable, indépendante du DOM)
 function previewRcProof(e){
   var f=(e.target.files||[])[0];
+  _rcProofFile=f||null;
   var pv=document.getElementById('om-proof-preview');if(!pv)return;
   var btn=document.getElementById('om-proof-btn');
   if(f){
@@ -4233,6 +4235,7 @@ function previewRcProof(e){
   } else { pv.innerHTML=''; if(btn)btn.textContent='📎 Choisir la capture d\'écran'; }
 }
 function clearRcProof(){
+  _rcProofFile=null;
   var inp=document.getElementById('om-proof');if(inp)inp.value='';
   var pv=document.getElementById('om-proof-preview');if(pv)pv.innerHTML='';
   var btn=document.getElementById('om-proof-btn');if(btn)btn.textContent='📎 Choisir la capture d\'écran';
@@ -4252,7 +4255,7 @@ async function confirmOrangeSent(amt){
   var ph=(document.getElementById('om-phone').value||'').replace(/[^0-9]/g,'');
   var txref=((document.getElementById('om-txref')||{}).value||'').trim();
   if(ph.length<8){showToast('❌ Entrez votre numéro Orange Money (8 chiffres min.)');return;}
-  var f=(document.getElementById('om-proof').files||[])[0];
+  var f=_rcProofFile||(document.getElementById('om-proof')||{files:[]}).files[0];
   if(!f){showToast('❌ Ajoutez la capture d\'écran du reçu (obligatoire)');return;}
   var sendBtn=document.getElementById('om-send-btn');
   if(sendBtn){if(sendBtn.disabled)return;sendBtn.disabled=true;sendBtn.textContent='⏳ Envoi de la preuve…';}
@@ -4274,6 +4277,7 @@ async function confirmOrangeSent(amt){
     const box=document.getElementById('recharge-orange');
     box.innerHTML='<div style="text-align:center;padding:18px"><div style="font-size:42px">✅</div><div style="font-weight:800;margin-top:8px">Preuve envoyée !</div><div style="font-size:12px;color:var(--text3);margin-top:6px">Un administrateur va vérifier votre paiement Orange Money ('+ind+' '+ph+')'+(txref?(' · transaction <b>'+txref+'</b>'):'')+' et créditer <b style="color:var(--accent)">'+fmtMoney(amt)+'</b> sur votre Portefeuille MgLoot. Vous recevrez une notification.</div><button class="rw-btn" style="margin-top:16px" onclick="closeRecharge()">Terminer</button></div>';
     showToast('✅ Demande envoyée à l\'admin');
+    _rcProofFile=null;
   }catch(e){showToast('❌ '+e.message);if(sendBtn){sendBtn.disabled=false;sendBtn.textContent='📤 Envoyer ma preuve de paiement';}}
 }
 /* ─── CinetPay (Orange Money Mali automatique) — configurable depuis l'admin ─── */
