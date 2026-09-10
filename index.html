@@ -1963,48 +1963,19 @@ body.ios .pnotif .pn-ic{border-radius:11px}
 <div class="screen" id="screen-vpn">
   <div class="screen-head">
     <div class="back-btn" onclick="goBack()"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></div>
-    <div class="screen-title">🛡️ ProtonVPN Gratuit</div>
+    <div class="screen-title">🔐 VPN</div>
   </div>
   <div class="screen-body">
-    <!-- Anciens VPN achetés (si le client en a) -->
+    <p class="sub" style="margin:0 0 14px">Fichiers WireGuard prêts à l'emploi. Achetez, puis téléchargez votre fichier <b>.conf</b> à importer dans l'app WireGuard.</p>
     <div id="vpn-mine-wrap" style="display:none">
       <h4 style="margin:0 0 8px;font-size:13px;color:var(--text2)">📥 Mes VPN achetés</h4>
       <div id="vpn-mine-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px"></div>
     </div>
-
-    <div style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(0,176,255,.12));border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px">
-      <div style="font-weight:800;font-size:16px;margin-bottom:4px">🛡️ ProtonVPN — 100% Gratuit</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.6">VPN sécurisé et illimité, sans compte à créer. Choisissez un serveur, téléchargez le fichier, importez-le dans l'app <b>WireGuard</b> et connectez-vous. Idéal pour stabiliser le ping en jeu. 🎮</div>
+    <div id="vpn-grid" style="display:flex;flex-direction:column;gap:12px">
+      <p class="sub" style="margin:0">Chargement…</p>
     </div>
 
-    <div style="font-size:12px;color:var(--text3);font-weight:800;letter-spacing:.5px;margin:6px 0 8px">🌍 CHOISIR UN SERVEUR</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px">
-        <span style="font-size:30px">🇳🇱</span>
-        <div style="flex:1"><div style="font-weight:700;font-size:14px">Pays-Bas</div><div style="font-size:11.5px;color:var(--text3)">Serveur gratuit · rapide en Europe</div></div>
-        <button onclick="downloadProtonConf('nl')" style="padding:11px 14px;border:none;border-radius:12px;font-weight:700;font-size:13px;color:#fff;background:linear-gradient(135deg,#00b0ff,#7c3aed);cursor:pointer;white-space:nowrap">📥 Télécharger</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px">
-        <span style="font-size:30px">🇺🇸</span>
-        <div style="flex:1"><div style="font-weight:700;font-size:14px">États-Unis</div><div style="font-size:11.5px;color:var(--text3)">Serveur gratuit · Amérique</div></div>
-        <button onclick="downloadProtonConf('us')" style="padding:11px 14px;border:none;border-radius:12px;font-weight:700;font-size:13px;color:#fff;background:linear-gradient(135deg,#00b0ff,#7c3aed);cursor:pointer;white-space:nowrap">📥 Télécharger</button>
-      </div>
-    </div>
-
-    <div style="font-size:12px;color:var(--text3);font-weight:800;letter-spacing:.5px;margin:20px 0 8px">🎮 TESTER MON PING</div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:16px;text-align:center">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Latence actuelle</div>
-      <div style="display:flex;align-items:baseline;justify-content:center;gap:4px">
-        <span id="ping-num" style="font-size:42px;font-weight:900;color:var(--text3);line-height:1">—</span>
-        <span style="font-size:16px;color:var(--text3);font-weight:700">ms</span>
-      </div>
-      <div id="ping-quality" style="font-size:13px;font-weight:800;margin-top:3px;min-height:18px;color:var(--text2)"></div>
-      <div id="ping-bars" style="display:flex;align-items:flex-end;justify-content:center;gap:5px;height:66px;margin:14px 0"></div>
-      <button id="ping-btn" onclick="startPingTest()" style="width:100%;padding:13px;border:none;border-radius:12px;font-weight:700;font-size:14px;color:#fff;background:linear-gradient(135deg,#00b0ff,#7c3aed);cursor:pointer">📶 Tester le ping</button>
-      <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">Teste ta latence. Connecte le VPN puis refais le test pour comparer. 🎯</div>
-    </div>
-
-    <div style="font-size:12px;color:var(--text3);font-weight:800;letter-spacing:.5px;margin:20px 0 8px">📲 COMMENT L'UTILISER</div>
+    <div style="font-size:12px;color:var(--text3);font-weight:800;letter-spacing:.5px;margin:22px 0 8px">📲 COMMENT L'UTILISER</div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;font-size:13px;color:var(--text2);line-height:1.9">
       <b>1.</b> Installez l'app <b>WireGuard</b> (gratuite) :<br>
       <a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank" rel="noopener" style="color:var(--accent)">▸ Android (Play Store)</a> &nbsp;·&nbsp;
@@ -2013,10 +1984,8 @@ body.ios .pnotif .pn-ic{border-radius:11px}
       <b>3.</b> Dans WireGuard, appuyez sur <b>+</b> → <b>Importer depuis un fichier</b> → choisissez le .conf.<br>
       <b>4.</b> Activez l'interrupteur pour vous <b>connecter</b>. ✅
     </div>
-    <p class="sub" style="font-size:11px;color:var(--text3);margin:12px 0 0;line-height:1.5">ℹ️ Serveurs gratuits fournis par Proton VPN, partagés entre les utilisateurs. Si un serveur est lent, essayez l'autre.</p>
   </div>
 </div>
-<div id="vpn-grid-hidden" style="display:none"></div>
 
 <!-- ════ OVERLAY LIVRAISON VPN (30 s) ════ -->
 <div id="vpn-deliver-overlay">
