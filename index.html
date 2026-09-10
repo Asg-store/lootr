@@ -6280,10 +6280,16 @@ function compressImage(file,maxDim,quality){
 function payCartGo(){
   if(!currentUser){openAuthModal();return;}
   if(!_cartMethod){showToast('Choisissez une méthode de paiement');return;}
+  // 🔄 Fait tourner le bouton pour les méthodes qui préparent/redirigent (sécurité : réinitialise après 7s)
+  var _spinCart=function(){
+    var b=document.getElementById('cart-pay-btn');
+    if(b){b.disabled=true;b.innerHTML='<span class="btn-spinner"></span> Traitement…';
+      setTimeout(function(){var x=document.getElementById('cart-pay-btn');if(x&&x.querySelector('.btn-spinner')){x.disabled=false;x.innerHTML='Payer →';}},7000);}
+  };
   if(_cartMethod==='wallet'){payCartWithWallet();return;}
-  if(_cartMethod==='fedapay'){payCartFedaPay();return;}
-  if(_cartMethod==='cinetpay'){payCartCinetPay();return;}
-  if(_cartMethod==='paytech'){payCartPayTech();return;}
+  if(_cartMethod==='fedapay'){_spinCart();payCartFedaPay();return;}
+  if(_cartMethod==='cinetpay'){_spinCart();payCartCinetPay();return;}
+  if(_cartMethod==='paytech'){_spinCart();payCartPayTech();return;}
   if(_cartMethod==='orange'||_cartMethod==='wave'){payCartOrange();return;}
   startCartPayment(); // carte / Google Pay / Apple Pay via Adyen
 }
@@ -6788,7 +6794,7 @@ async function payCartWithWallet(){
   const total=cartCheckoutData.total||0;
   if((userData.walletBalance||0)<total){showToast('❌ Solde insuffisant. Rechargez votre portefeuille.');return;}
   if(!await asgConfirm({icon:'💳',title:'Paiement portefeuille',message:'Payer '+fmtMoney(total)+' avec votre solde MgLoot ?',okText:'Payer '+fmtMoney(total),cancelText:'Annuler'}))return;
-  const wb=document.getElementById('cart-pay-btn');if(wb){wb.disabled=true;wb.textContent='⏳ Paiement…';}
+  const wb=document.getElementById('cart-pay-btn');if(wb){wb.disabled=true;wb.innerHTML='<span class="btn-spinner"></span> Paiement…';}
   try{
     const uref=db.collection('users').doc(currentUser.uid);
     const oref=db.collection('orders').doc();
