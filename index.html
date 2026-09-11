@@ -2137,7 +2137,7 @@ body.ios .pnotif .pn-ic{border-radius:11px}
       <div class="pts-shop" id="pts-shop-grid"><p class="sub" style="margin:0">Chargement…</p></div>
     </div>
 
-    <button class="rw-btn alt" id="social-share" onclick="shareShop()">📢 Partager la boutique MgLoot</button>
+    <button class="rw-btn alt social-share" onclick="shareShop()">📢 Partager la boutique MgLoot</button>
     <button class="rw-btn alt" style="margin-top:10px" onclick="shareProfile()">🔗 Partager mon profil</button>
   </div>
 </div>
@@ -2164,7 +2164,7 @@ body.ios .pnotif .pn-ic{border-radius:11px}
       <h4>🌐 Suivez MgLoot</h4>
       <div class="social-row" id="social-links"><p class="sub" style="margin:0">Aucun lien pour le moment.</p></div>
     </div>
-    <button class="rw-btn alt" id="social-share" onclick="shareShop()">📢 Partager la boutique MgLoot</button>
+    <button class="rw-btn alt social-share" onclick="shareShop()">📢 Partager la boutique MgLoot</button>
   </div>
 </div>
 
@@ -3606,8 +3606,7 @@ function openSocial(){
       +'<div class="soc-go" style="color:'+b.c+'">Ouvrir →</div></a>';
   }).join('');
   // ✨ Nouveau : bouton de partage global de la boutique
-  var sh=document.getElementById('social-share');
-  if(sh)sh.style.display='block';
+  document.querySelectorAll('.social-share').forEach(function(sh){sh.style.display='block';});
 }
 /* ✨ NOUVEAU : partager la boutique (natif Android, sinon copie du lien) */
 function shareShop(){
@@ -7391,60 +7390,6 @@ function setCurrency(c){
 /* ═══════════ BOUTIQUE VPN (WireGuard) ═══════════ */
 function vEsc(s){return (''+(s||'')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 let vpnFiles=[],_vpnLoaded=false,myVpn=[],_myVpnUnsub=null;
-// 🛡️ ProtonVPN Gratuit — configs WireGuard téléchargeables (serveurs libres partagés)
-var PROTON_CONFS={
-  nl:{file:'ProtonVPN-NL-Gratuit.conf',conf:'[Interface]\n# ProtonVPN Free - NL#218\nPrivateKey = wOZlaB+a/znI3TxZ3I4RwktsmYaD/PuBkDcwI6dzT0I=\nAddress = 10.2.0.2/32\nDNS = 10.2.0.1\n\n[Peer]\nPublicKey = LSHQs3cYiqTElgm1lO7A0TfI/Wa69V25coKhWvHyhUY=\nAllowedIPs = 0.0.0.0/0, ::/0\nEndpoint = 185.165.240.80:51820\nPersistentKeepalive = 25\n'},
-  us:{file:'ProtonVPN-US-Gratuit.conf',conf:'[Interface]\n# ProtonVPN Free - US#72\nPrivateKey = gGjMt7yrNkoMY1RKunAl8ARKSE4YWLupaSQxmBCSIWQ=\nAddress = 10.2.0.2/32\nDNS = 10.2.0.1\n\n[Peer]\nPublicKey = 2v1DSq+q5x9o7PMVUjJ6hSrBD4lfjevMp45E/1mgF2I=\nAllowedIPs = 0.0.0.0/0, ::/0\nEndpoint = 151.243.141.161:51820\nPersistentKeepalive = 25\n'}
-};
-function downloadProtonConf(key){
-  var s=PROTON_CONFS[key];if(!s)return;
-  try{
-    var blob=new Blob([s.conf],{type:'application/octet-stream'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');a.href=url;a.download=s.file;document.body.appendChild(a);a.click();
-    setTimeout(function(){try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},150);
-    showToast('📥 '+s.file+' téléchargé — importez-le dans WireGuard');
-  }catch(e){showToast('❌ Téléchargement impossible, réessayez');}
-}
-// 🎮 Test de ping graphique (mesure la latence via un aller-retour réseau)
-var _pinging=false;
-function _pingColor(v){return v<80?'#00e676':v<150?'#f5a623':v<250?'#ff9500':'#ff5a5a';}
-function _pingOnce(){
-  return new Promise(function(resolve){
-    var t=performance.now(),done=false;
-    var img=new Image();
-    function fin(){if(done)return;done=true;resolve(Math.round(performance.now()-t));}
-    img.onload=fin;img.onerror=fin;
-    img.src='https://www.gstatic.com/generate_204?_='+Date.now()+'_'+Math.random();
-    setTimeout(fin,3000);
-  });
-}
-function _renderPingBars(samples){
-  var max=Math.max(120,Math.max.apply(null,samples));
-  return samples.map(function(v){
-    var h=Math.max(6,Math.round((v/max)*60));
-    return '<div title="'+v+' ms" style="width:16px;height:'+h+'px;border-radius:4px;background:'+_pingColor(v)+';transition:height .2s"></div>';
-  }).join('');
-}
-async function startPingTest(){
-  if(_pinging)return;_pinging=true;
-  var btn=document.getElementById('ping-btn');if(btn){btn.disabled=true;btn.innerHTML='<span class="btn-spinner"></span> Test en cours…';}
-  var numEl=document.getElementById('ping-num'),barsEl=document.getElementById('ping-bars'),qEl=document.getElementById('ping-quality');
-  if(qEl)qEl.textContent='';var samples=[];
-  for(var i=0;i<6;i++){
-    var d=await _pingOnce();samples.push(d);
-    if(numEl){numEl.textContent=d;numEl.style.color=_pingColor(d);}
-    if(barsEl)barsEl.innerHTML=_renderPingBars(samples);
-    await new Promise(function(r){setTimeout(r,220);});
-  }
-  // Moyenne (on ignore la 1re mesure, souvent faussée par l'ouverture de connexion)
-  var use=samples.length>1?samples.slice(1):samples;
-  var avg=Math.round(use.reduce(function(a,b){return a+b;},0)/use.length);
-  if(numEl){numEl.textContent=avg;numEl.style.color=_pingColor(avg);}
-  if(qEl){qEl.textContent=avg<80?'✅ Excellent':avg<150?'🟡 Bon':avg<250?'🟠 Moyen':'🔴 Élevé';qEl.style.color=_pingColor(avg);}
-  if(btn){btn.disabled=false;btn.textContent='🔄 Refaire le test';}
-  _pinging=false;
-}
 function loadVpnFiles(){
   const grid=document.getElementById('vpn-grid');if(!grid)return;
   if(!_vpnLoaded){
