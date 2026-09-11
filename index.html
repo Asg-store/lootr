@@ -4107,7 +4107,7 @@ function showScreenAd(ad){
   };
   var cnt=document.getElementById('sa-count');cnt.textContent=secs;
   var ig=document.getElementById('sa-ignore');ig.style.display='none';
-  ov.classList.add('open');armBack();
+  ov.classList.add('open');
   if(_adTimer)clearInterval(_adTimer);
   var s=secs;
   _adTimer=setInterval(function(){
@@ -5882,30 +5882,15 @@ function closeTopOverlay(){
    d'historique ; le bouton « retour » ferme la couche du dessus. Quand il ne
    reste plus rien, le navigateur recule normalement (sortie de l'app). */
 var _histDepth=0;
-var _skipNextPop=false, _popClosing=false;
+var _popClosing=false;
 
 window.addEventListener('popstate',function(){
-  // Fermeture directe (bouton X) déjà traitée → on a juste consommé l'entrée d'historique.
-  if(_skipNextPop){_skipNextPop=false;return;}
   // Bouton « retour » du téléphone → on ferme UNE seule couche (étape par étape).
   // Pas de ré-armement : chaque appui recule d'exactement un cran. Quand plus rien
   // n'est ouvert, closeTopOverlay renvoie false et le navigateur recule (sortie).
   _popClosing=true;
   closeTopOverlay();
   _popClosing=false;
-});
-
-// Fermer une couche DIRECTEMENT (bouton X, action) consomme aussi une entrée
-// d'historique → le bouton « retour » du téléphone reste parfaitement synchronisé.
-['closeCart','closeAuthModal','closePayHistory','closeSidebar','closeLightbox','closePhoneSheet','closeAccountPay','closeScreenAd'].forEach(function(fn){
-  if(typeof window[fn]==='function'){
-    var o=window[fn];
-    window[fn]=function(){
-      var r=o.apply(this,arguments);
-      if(!_popClosing){_skipNextPop=true;try{history.back();}catch(e){}}
-      return r;
-    };
-  }
 });
 
 // armer le retour pour les overlays existants (un cran d'historique à l'ouverture)
