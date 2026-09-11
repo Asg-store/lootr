@@ -3957,7 +3957,7 @@ function editProfilePhone(){
   var inp=document.getElementById('ph-num');
   if(inp)inp.value=p.num;
   phErr('');
-  document.getElementById('phone-overlay').classList.add('open');
+  document.getElementById('phone-overlay').classList.add('open');armBack();
   setTimeout(function(){try{inp.focus();}catch(_){}} ,320);
 }
 function closePhoneSheet(){document.getElementById('phone-overlay').classList.remove('open');}
@@ -4108,7 +4108,7 @@ function showScreenAd(ad){
   };
   var cnt=document.getElementById('sa-count');cnt.textContent=secs;
   var ig=document.getElementById('sa-ignore');ig.style.display='none';
-  ov.classList.add('open');
+  ov.classList.add('open');armBack();
   if(_adTimer)clearInterval(_adTimer);
   var s=secs;
   _adTimer=setInterval(function(){
@@ -5883,15 +5883,33 @@ function closeTopOverlay(){
    d'historique ; le bouton « retour » ferme la couche du dessus. Quand il ne
    reste plus rien, le navigateur recule normalement (sortie de l'app). */
 var _histDepth=0;
+var _skipNextPop=false, _popClosing=false;
 
 window.addEventListener('popstate',function(){
-  if(_histDepth>0)_histDepth--;
-  // Comportement d'origine : on ferme la couche du dessus, sinon on laisse
-  // le navigateur reculer normalement (aucune confirmation de sortie).
-  if(closeTopOverlay())armBack();
+  // Fermeture directe (bouton X) déjà traitée → on a juste consommé l'entrée d'historique.
+  if(_skipNextPop){_skipNextPop=false;return;}
+  // Bouton « retour » du téléphone → on ferme UNE seule couche (étape par étape).
+  // Pas de ré-armement : chaque appui recule d'exactement un cran. Quand plus rien
+  // n'est ouvert, closeTopOverlay renvoie false et le navigateur recule (sortie).
+  _popClosing=true;
+  closeTopOverlay();
+  _popClosing=false;
 });
 
-// armer le retour pour les overlays existants
+// Fermer une couche DIRECTEMENT (bouton X, action) consomme aussi une entrée
+// d'historique → le bouton « retour » du téléphone reste parfaitement synchronisé.
+['closeCart','closeAuthModal','closePayHistory','closeSidebar','closeLightbox','closePhoneSheet','closeAccountPay','closeScreenAd'].forEach(function(fn){
+  if(typeof window[fn]==='function'){
+    var o=window[fn];
+    window[fn]=function(){
+      var r=o.apply(this,arguments);
+      if(!_popClosing){_skipNextPop=true;try{history.back();}catch(e){}}
+      return r;
+    };
+  }
+});
+
+// armer le retour pour les overlays existants (un cran d'historique à l'ouverture)
 ['openCart','openFilterSheet','openAuthModal','openPayHistory'].forEach(fn=>{
   if(typeof window[fn]==='function'){const o=window[fn];window[fn]=function(){o.apply(this,arguments);armBack();};}
 });
@@ -8507,7 +8525,7 @@ function revealAccountDelivery(a,cred){
     +(cred.notes?'<div style="font-size:12.5px;color:var(--text2);background:rgba(255,152,0,.12);border:1px solid rgba(255,152,0,.35);border-radius:12px;padding:10px;margin-bottom:12px">📝 '+esc(cred.notes)+'</div>':'')
     +'<div style="font-size:12px;color:#ff9800;line-height:1.5;margin-bottom:14px">⚠️ Changez le mot de passe et l\'e-mail de récupération dès maintenant pour sécuriser votre achat.</div>'
     +'<button class="btn-primary" onclick="closeAccountPay()">Terminé</button>';
-  var ov=document.getElementById('accpay-overlay');if(ov)ov.classList.add('open');
+  var ov=document.getElementById('accpay-overlay');if(ov)ov.classList.add('open');armBack();
   showToast('✅ Compte livré !');
 }
 function copyDeliv(id){
@@ -8564,7 +8582,7 @@ function openAccountPay(id){
     +'<b>'+String(a.title||'Compte').replace(/</g,'&lt;')+'</b> · '+fmtMoney(price)
     +(official?'':'<br><span style="font-size:11.5px;color:var(--text3)">Annonce d\'un vendeur — portefeuille et points non disponibles.</span>')
     +'</div>'+html;
-  var ov=document.getElementById('accpay-overlay');if(ov)ov.classList.add('open');
+  var ov=document.getElementById('accpay-overlay');if(ov)ov.classList.add('open');armBack();
 }
 function closeAccountPay(){var ov=document.getElementById('accpay-overlay');if(ov)ov.classList.remove('open');}
 /* Mobile Money : on recharge le portefeuille du montant, puis l'achat se fait au solde */
