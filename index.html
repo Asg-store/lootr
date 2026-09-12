@@ -7791,21 +7791,30 @@ function fireDeliverySequence(o){
   }catch(e){}
   var art=o.productName||((o.items&&o.items[0])?(o.items[0].name||o.items[0].title):'')||'';
   var suf=art?(' · '+art):'';
-  var uid=o.userId;
   var steps=[
     ['✅ Payée','Votre paiement'+(suf||' de commande')+' a bien été reçu.'],
     ['📦 Préparation','Votre commande'+suf+' est en cours de préparation.'],
     ['🚚 Livraison en cours','Votre commande'+suf+' est en cours de livraison…'],
     ['🎉 Livrée','Votre commande'+suf+' a été livrée. Merci pour votre achat !']
   ];
-  // 4 push standards (même mécanisme que les push marketplace qui fonctionnent),
-  // espacés de 2,5 s. Le 1er part tout de suite ; garde l'app ouverte quelques secondes.
-  function step(i){
+  // Affiche chaque étape DIRECTEMENT dans la barre du téléphone (via le service worker),
+  // + bannière interne. Marche app ouverte (juste après le paiement), sans dépendre du serveur.
+  function showStep(i){
     if(i>=steps.length)return;
-    try{fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:uid,title:steps[i][0],body:steps[i][1],type:'order'})}).catch(function(){});}catch(e){}
-    setTimeout(function(){step(i+1);},2500);
+    var title=steps[i][0], body=steps[i][1];
+    try{
+      if(('Notification' in window) && Notification.permission==='granted' && navigator.serviceWorker && navigator.serviceWorker.ready){
+        navigator.serviceWorker.ready.then(function(reg){
+          reg.showNotification(title,{body:body,icon:'notif-logo.png',badge:'notif-badge.png',vibrate:[130,60,130],tag:'mgdel-'+o.id+'-'+i,renotify:true,data:{type:'order',url:'/?open=order'}});
+        }).catch(function(){ try{new Notification(title,{body:body,icon:'notif-logo.png'});}catch(e){} });
+      } else if(('Notification' in window) && Notification.permission==='granted'){
+        try{new Notification(title,{body:body,icon:'notif-logo.png'});}catch(e){}
+      }
+    }catch(e){}
+    try{if(typeof phoneNotif==='function')phoneNotif(title,body,'order');}catch(e){}   // bannière interne
+    setTimeout(function(){showStep(i+1);},3000);
   }
-  step(0);
+  showStep(0);
 }
 function mpWriteBell(docId,notif){
   if(!currentUser)return;
