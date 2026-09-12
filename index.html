@@ -7791,28 +7791,37 @@ function fireDeliverySequence(o){
   }catch(e){}
   var art=o.productName||((o.items&&o.items[0])?(o.items[0].name||o.items[0].title):'')||'';
   var suf=art?(' · '+art):'';
+  // UNE SEULE notification qui se met à jour en direct (comme une barre de téléchargement) :
+  // Payée → Préparation → Livraison en cours… → Livrée. Même "tag" = elle se remplace.
   var steps=[
-    ['✅ Payée','Votre paiement'+(suf||' de commande')+' a bien été reçu.'],
-    ['📦 Préparation','Votre commande'+suf+' est en cours de préparation.'],
-    ['🚚 Livraison en cours','Votre commande'+suf+' est en cours de livraison…'],
-    ['🎉 Livrée','Votre commande'+suf+' a été livrée. Merci pour votre achat !']
+    {t:'✅ Commande payée',b:'Paiement reçu'+suf+'. Préparation…',p:25,bar:'▓▓░░░░░░░░ 25%'},
+    {t:'📦 En préparation',b:'Votre commande'+suf+' est en préparation…',p:50,bar:'▓▓▓▓▓░░░░░ 50%'},
+    {t:'🚚 Livraison en cours…',b:'Votre commande'+suf+' arrive…',p:80,bar:'▓▓▓▓▓▓▓▓░░ 80%'},
+    {t:'🎉 Commande livrée',b:'Votre commande'+suf+' est livrée. Merci !',p:100,bar:'▓▓▓▓▓▓▓▓▓▓ 100%'}
   ];
-  // Affiche chaque étape DIRECTEMENT dans la barre du téléphone (via le service worker),
-  // + bannière interne. Marche app ouverte (juste après le paiement), sans dépendre du serveur.
+  var TAG='mgdelivery-'+o.id;   // même tag → la notif est REMPLACÉE (pas empilée)
   function showStep(i){
     if(i>=steps.length)return;
-    var title=steps[i][0], body=steps[i][1];
+    var s=steps[i];
+    var body=s.b+'\n'+s.bar;
+    var last=(i===steps.length-1);
     try{
       if(('Notification' in window) && Notification.permission==='granted' && navigator.serviceWorker && navigator.serviceWorker.ready){
         navigator.serviceWorker.ready.then(function(reg){
-          reg.showNotification(title,{body:body,icon:'notif-logo.png',badge:'notif-badge.png',vibrate:[130,60,130],tag:'mgdel-'+o.id+'-'+i,renotify:true,data:{type:'order',url:'/?open=order'}});
-        }).catch(function(){ try{new Notification(title,{body:body,icon:'notif-logo.png'});}catch(e){} });
+          reg.showNotification(s.t,{
+            body:body, icon:'notif-logo.png', badge:'notif-badge.png',
+            tag:TAG, renotify:true,                 // ← même tag = mise à jour en place
+            silent:!last,                            // vibre seulement à la fin (livré)
+            vibrate:last?[130,60,130]:[40],
+            requireInteraction:!last,                // reste affichée pendant la progression
+            data:{type:'order',url:'/?open=order'}
+          });
+        }).catch(function(){ try{new Notification(s.t,{body:body,icon:'notif-logo.png',tag:TAG});}catch(e){} });
       } else if(('Notification' in window) && Notification.permission==='granted'){
-        try{new Notification(title,{body:body,icon:'notif-logo.png'});}catch(e){}
+        try{new Notification(s.t,{body:body,icon:'notif-logo.png',tag:TAG});}catch(e){}
       }
     }catch(e){}
-    try{if(typeof phoneNotif==='function')phoneNotif(title,body,'order');}catch(e){}   // bannière interne
-    setTimeout(function(){showStep(i+1);},3000);
+    setTimeout(function(){showStep(i+1);}, last?0:2600);
   }
   showStep(0);
 }
