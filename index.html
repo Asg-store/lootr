@@ -5524,12 +5524,13 @@ async function loadUserPayments(){
     try{
       var _manual=/manuel/i.test(o.paymentMethod||'')||!!o.proofUrl;
       var _deliv=(o.status==='delivered'||o.ftStatus==='success');
+      var _paidOk=(o.status==='paid'||o.status==='confirmed'||o.status==='shipped'||_deliv);
       var _ts=(o.createdAt&&o.createdAt.toMillis)?o.createdAt.toMillis():0;
       var _recent=_ts&&(Date.now()-_ts<30*60*1000); // < 30 min
+      if(!_manual && _paidOk && _recent)fireDeliverySequence(o); // push barre du téléphone
       if(!_manual && o.status==='paid' && !_deliv){
         var _art=o.productName||((o.items&&o.items[0])?(o.items[0].name||o.items[0].title):'')||'';
         mpWriteBell('autodel-'+o.id,{icon:'🚚',title:'Livraison en cours',body:'Votre commande'+(_art?(' · '+_art):'')+' est en cours de livraison. 🚚',type:'order',link:'order',refId:o.id});
-        if(_recent)fireDeliverySequence(o); // push barre du téléphone (Payée→Préparation→Livraison→Livrée)
       }
     }catch(e){}
   });
@@ -6975,6 +6976,7 @@ function watchCartOrder(orderId){
 }
 function handleCartPaymentResult(result){showToast('⏳ Paiement en cours de validation…');}
 function showCartPaymentSuccess(order){
+  try{fireDeliverySequence(order);}catch(e){}
   if(cartOrderUnsub){cartOrderUnsub();cartOrderUnsub=null;}
   cart=[];saveCart();renderCart();
   document.getElementById('adyen-cart-dropin').style.display='none';
@@ -7009,6 +7011,7 @@ function showCartPaymentFailed(){
 let _dlvTimers=[];
 function showDeliveryProgress(order,opt){
   order=order||{};
+  try{fireDeliverySequence(order);}catch(e){}
   if(order.id){try{_dlvSeenAdd(order.id);}catch(e){}}   // évite un double affichage par le watcher global
   _dlvTimers.forEach(clearTimeout);_dlvTimers=[];
   // Durée + mode : nombre = secondes ; true = rapide (5s) ; objet {sec,account} ; défaut 87s
@@ -7775,7 +7778,9 @@ function mpShowConfirmed(o){
 // 🚚 Séquence de push de livraison (paiement DIRECT uniquement), envoyée côté serveur
 //    → arrive dans la barre du téléphone même app fermée. Une seule fois par commande.
 function fireDeliverySequence(o){
-  if(!o||!o.userId)return;
+  o=o||{};
+  var uid=o.userId||(currentUser&&currentUser.uid);
+  if(!uid||!o.id)return;
   var manual=/manuel/i.test(o.paymentMethod||'')||!!o.proofUrl;
   if(manual)return; // paiement manuel → attend la confirmation admin
   try{
@@ -7785,7 +7790,22 @@ function fireDeliverySequence(o){
     localStorage.setItem('delseq-done',JSON.stringify(done));
   }catch(e){}
   var art=o.productName||((o.items&&o.items[0])?(o.items[0].name||o.items[0].title):'')||'';
-  try{fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'deliverySeq',userId:o.userId,article:art})}).catch(function(){});}catch(e){}
+  var suf=art?(' · '+art):'';
+  var uid=o.userId;
+  var steps=[
+    ['✅ Payée','Votre paiement'+(suf||' de commande')+' a bien été reçu.'],
+    ['📦 Préparation','Votre commande'+suf+' est en cours de préparation.'],
+    ['🚚 Livraison en cours','Votre commande'+suf+' est en cours de livraison…'],
+    ['🎉 Livrée','Votre commande'+suf+' a été livrée. Merci pour votre achat !']
+  ];
+  // 4 push standards (même mécanisme que les push marketplace qui fonctionnent),
+  // espacés de 2,5 s. Le 1er part tout de suite ; garde l'app ouverte quelques secondes.
+  function step(i){
+    if(i>=steps.length)return;
+    try{fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:uid,title:steps[i][0],body:steps[i][1],type:'order'})}).catch(function(){});}catch(e){}
+    setTimeout(function(){step(i+1);},2500);
+  }
+  step(0);
 }
 function mpWriteBell(docId,notif){
   if(!currentUser)return;
