@@ -21,6 +21,7 @@
 <meta property="og:image:height" content="630"/>
 <meta property="og:url" content="https://mgloot.com/"/>
 <link rel="canonical" href="https://mgloot.com/"/>
+<link rel="manifest" href="/manifest.json"/>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -9845,13 +9846,29 @@ function renderTerms(){
 
 /* ─── INSTALLATION / TÉLÉCHARGER L'APP (PWA) ─── */
 let deferredPrompt=null;
-function setupPWA(){
+/* 📥 Bandeau « Télécharger l'app MGLOOT » (Telegram) — masqué si déjà installée ou fermé */
+function showTelegramDownloadBanner(){
   try{
-    const mf={name:(document.getElementById('logo-text').textContent||'MgLoot'),short_name:'MgLoot',start_url:'.',display:'standalone',background_color:'#0b0b0d',theme_color:'#0b0b0d',icons:[{src:'/icon-192.png?v=3',sizes:'192x192',type:'image/png',purpose:'any maskable'},{src:'/icon-512.png?v=3',sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
-    const blob=new Blob([JSON.stringify(mf)],{type:'application/json'});
-    const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(blob);document.head.appendChild(l);
+    var standalone=(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+    if(standalone)return;                                   // déjà dans l'app installée
+    if(localStorage.getItem('mgloot-apk-hide')==='1')return; // déjà fermé par l'utilisateur
+    if(document.getElementById('apk-banner'))return;
+    var b=document.createElement('div');b.id='apk-banner';
+    b.style.cssText='position:fixed;left:10px;right:10px;bottom:80px;z-index:9000;background:linear-gradient(135deg,#00b0ff,#7c3aed);color:#fff;border-radius:16px;padding:11px 13px;display:flex;align-items:center;gap:11px;box-shadow:0 12px 34px rgba(0,0,0,.4)';
+    b.innerHTML='<img src="/icon-192.png" alt="" style="width:40px;height:40px;border-radius:10px;flex-shrink:0"/>'
+      +'<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13.5px">📥 Installez l\'app MGLOOT</div><div style="font-size:11px;opacity:.92">Plus rapide · notifications · plein écran</div></div>'
+      +'<a href="https://t.me/mgloot/1" target="_blank" rel="noopener" style="background:#fff;color:#111;font-weight:800;font-size:12.5px;padding:9px 13px;border-radius:10px;text-decoration:none;white-space:nowrap">Télécharger</a>'
+      +'<span onclick="var e=document.getElementById(\'apk-banner\');if(e)e.remove();localStorage.setItem(\'mgloot-apk-hide\',\'1\')" style="font-size:22px;line-height:1;cursor:pointer;padding:0 2px;opacity:.85">×</span>';
+    document.body.appendChild(b);
   }catch(e){}
-  const mt=document.createElement('meta');mt.name='theme-color';mt.content='#070b18';document.head.appendChild(mt);
+}
+function setupPWA(){
+  // Le manifest est maintenant un vrai fichier statique (/manifest.json) lié dans <head>,
+  // requis pour générer une APK avec PWABuilder. On garde juste le theme-color ici.
+  try{
+    const mt=document.createElement('meta');mt.name='theme-color';mt.content='#070b18';document.head.appendChild(mt);
+  }catch(e){}
+  try{ setTimeout(showTelegramDownloadBanner, 3500); }catch(e){}
 }
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();deferredPrompt=e;

@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "MgLoot — Recharge & Marketplace Gaming",
+  "short_name": "MgLoot",
+  "description": "Recharges UC PUBG Mobile, Diamants Free Fire, comptes gaming, cartes cadeaux et VPN. Paiement Orange Money, Wave, Moov. Livraison instantanee 24h/24.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0b0d",
+  "theme_color": "#0b0b0d",
+  "lang": "fr",
+  "dir": "ltr",
+  "categories": ["shopping", "games", "utilities"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
