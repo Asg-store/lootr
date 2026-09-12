@@ -1113,6 +1113,9 @@ body.ios .pnotif .pn-ic{border-radius:11px}
 .pt-coin-bg{display:inline-block;background:var(--pt-coin) center/contain no-repeat;border-radius:50%;flex-shrink:0}
 .btn-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;vertical-align:-2px;margin-right:3px;animation:btnspin .6s linear infinite}
 @keyframes btnspin{to{transform:rotate(360deg)}}
+@keyframes ordPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+@keyframes ordFlow{0%{background-position:200% 0}100%{background-position:0 0}}
+@keyframes ordBanner{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
 /* 🪙 Icône pièce chargée depuis le fichier /points-coin.png (modifiable depuis GitHub).
    Si le fichier existe, il s'affiche par-dessus ; sinon on garde l'image de secours (--pt-coin). */
 .pt-coin-bg{background-image:url('/points-coin.png'),var(--pt-coin);background-position:center,center;background-size:contain,contain;background-repeat:no-repeat,no-repeat}
@@ -5605,6 +5608,36 @@ function autoCompleteMyDeliveries(orders){
   // Si des vérifications ont été lancées, on rafraîchit une fois l'historique après la livraison serveur (~12 s)
   if(fired>0){setTimeout(function(){try{if(document.getElementById('pay-hist-list'))loadUserPayments();}catch(e){}},62000);}
 }
+// 🚚 Barre d'étapes animée : Payée → Préparation → Livrée
+function _orderStepsHtml(o){
+  var delivered=(o.status==='delivered'||o.ftStatus==='success');
+  var failed=(o.status==='cancelled'||o.status==='failed'||o.status==='rejected'||o.ftStatus==='failed');
+  if(failed)return '<div style="background:rgba(255,59,92,.1);border:1px solid #ff3b5c;border-radius:12px;padding:12px;text-align:center;color:#ff3b5c;font-weight:700;font-size:13px;margin-bottom:14px">❌ Commande annulée</div>';
+  var paid=(o.status==='paid'||o.status==='confirmed'||o.status==='shipped'||delivered);
+  if(!paid)return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;color:#ffb020;font-weight:700;font-size:13px;margin-bottom:14px">⏳ En attente de paiement</div>';
+  var shipped=(o.status==='shipped');
+  var c=['done',(delivered||shipped)?'done':'active',delivered?'done':(shipped?'active':'todo')];
+  var conn=[(delivered||shipped)?'done':'active',delivered?'done':(shipped?'active':'todo')];
+  var ic=['💳','🚚','📦'],lb=['Payée','Préparation','Livrée'];
+  function circle(i){
+    var s=c[i];
+    var col=s==='done'?'#00c853':(s==='active'?'#00b0ff':'var(--text3)');
+    var bg=s==='done'?'rgba(0,200,83,.15)':(s==='active'?'rgba(0,176,255,.15)':'var(--bg3)');
+    var anim=s==='active'?'animation:ordPulse 1.15s ease-in-out infinite;':'';
+    return '<div style="width:66px;text-align:center;flex-shrink:0">'
+      +'<div style="width:42px;height:42px;margin:0 auto 5px;border-radius:50%;background:'+bg+';border:2px solid '+col+';display:flex;align-items:center;justify-content:center;font-size:19px;'+anim+'">'+(s==='done'?'✅':ic[i])+'</div>'
+      +'<div style="font-size:10.5px;font-weight:700;color:'+col+'">'+lb[i]+'</div>'
+      +(s==='active'?'<div style="font-size:8.5px;color:#00b0ff;margin-top:1px">en cours…</div>':'')
+      +'</div>';
+  }
+  function connector(i){
+    var s=conn[i];
+    var css=s==='active'?'background:linear-gradient(90deg,#00c853,#00b0ff,#00c853);background-size:200% 100%;animation:ordFlow 1.2s linear infinite;':('background:'+(s==='done'?'#00c853':'var(--border)')+';');
+    return '<div style="flex:1;height:4px;border-radius:2px;margin-top:19px;'+css+'"></div>';
+  }
+  return '<div style="display:flex;align-items:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 8px 12px;margin-bottom:14px">'
+    +circle(0)+connector(0)+circle(1)+connector(1)+circle(2)+'</div>';
+}
 // ── Facture détaillée (clic sur une commande de l'historique) ──
 function showInvoice(id){
   var o=(window._invOrders||{})[id];if(!o)return;
@@ -5651,6 +5684,7 @@ function showInvoice(id){
        +'<div><div style="font-size:11px;color:var(--text3)">Référence</div><div style="font-weight:800;font-size:15px">'+ref+'</div></div>'
        +'<div style="text-align:right"><div style="font-weight:800;font-size:13px;color:'+statusCol+'">'+statusTxt+'</div><div style="font-size:11px;color:var(--text3)">'+formatPhDate(o.createdAt)+'</div></div>'
      +'</div>'
+     +_orderStepsHtml(o)
      +'<div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--text3);text-transform:uppercase;margin-bottom:2px">Articles</div>'
      +rows
      +(lines?('<div style="margin-top:12px">'+lines+'</div>'):'')
