@@ -1115,6 +1115,7 @@ body.ios .pnotif .pn-ic{border-radius:11px}
 @keyframes btnspin{to{transform:rotate(360deg)}}
 @keyframes ordPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
 @keyframes ordFlow{0%{background-position:200% 0}100%{background-position:0 0}}
+@keyframes notifTruck{0%{left:0}100%{left:calc(100% - 20px)}}
 @keyframes ordBanner{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
 /* 🪙 Icône pièce chargée depuis le fichier /points-coin.png (modifiable depuis GitHub).
    Si le fichier existe, il s'affiche par-dessus ; sinon on garde l'image de secours (--pt-coin). */
@@ -5517,7 +5518,19 @@ async function loadUserPayments(){
     return;
   }
   window._invOrders={};
-  userOrders.forEach(function(o){window._invOrders[o.id]=o;});
+  userOrders.forEach(function(o){
+    window._invOrders[o.id]=o;
+    // 🚚 Paiement DIRECT (auto) et pas encore livré → notif « Livraison en cours » automatique
+    // (sans intervention admin). Les paiements manuels (Orange/Wave) attendent la confirmation.
+    try{
+      var _manual=/manuel/i.test(o.paymentMethod||'')||!!o.proofUrl;
+      var _deliv=(o.status==='delivered'||o.ftStatus==='success');
+      if(!_manual && o.status==='paid' && !_deliv){
+        var _art=o.productName||((o.items&&o.items[0])?(o.items[0].name||o.items[0].title):'')||'';
+        mpWriteBell('autodel-'+o.id,{icon:'🚚',title:'Livraison en cours',body:'Votre commande'+(_art?(' · '+_art):'')+' est en cours de livraison. 🚚',type:'order',link:'order',refId:o.id});
+      }
+    }catch(e){}
+  });
   // 🚀 Auto-finalisation : les commandes payées en direct mais pas encore livrées se
   //    vérifient toutes seules (appel idempotent → livraison + notif + statut « Livré »).
   //    Aucune intervention admin nécessaire.
@@ -5614,7 +5627,11 @@ function _orderStepsHtml(o){
   var failed=(o.status==='cancelled'||o.status==='failed'||o.status==='rejected'||o.ftStatus==='failed');
   if(failed)return '<div style="background:rgba(255,59,92,.1);border:1px solid #ff3b5c;border-radius:12px;padding:12px;text-align:center;color:#ff3b5c;font-weight:700;font-size:13px;margin-bottom:14px">❌ Commande annulée</div>';
   var paid=(o.status==='paid'||o.status==='confirmed'||o.status==='shipped'||delivered);
-  if(!paid)return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;color:#ffb020;font-weight:700;font-size:13px;margin-bottom:14px">⏳ En attente de paiement</div>';
+  var manual=/manuel/i.test(o.paymentMethod||'')||!!o.proofUrl;
+  if(!paid){
+    if(manual)return '<div style="background:rgba(0,176,255,.1);border:1px solid #00b0ff;border-radius:12px;padding:12px;text-align:center;color:#00b0ff;font-weight:700;font-size:13px;margin-bottom:14px"><span style="display:inline-block;width:12px;height:12px;border:2px solid #00b0ff;border-top-color:transparent;border-radius:50%;animation:btnspin .7s linear infinite;vertical-align:-1px;margin-right:6px"></span>Paiement envoyé — en attente de confirmation de l\'administrateur</div>';
+    return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;color:#ffb020;font-weight:700;font-size:13px;margin-bottom:14px">⏳ En attente de paiement</div>';
+  }
   var shipped=(o.status==='shipped');
   var c=['done',(delivered||shipped)?'done':'active',delivered?'done':(shipped?'active':'todo')];
   var conn=[(delivered||shipped)?'done':'active',delivered?'done':(shipped?'active':'todo')];
@@ -8303,11 +8320,28 @@ function renderNotifs(){
       <div class="notif-ico">${n.icon==='⭐'?ptCoin(26):n.icon}</div>
       <div class="notif-c"><div class="notif-t">${(n.title||'').replace(/</g,'&lt;')}</div>
         <div class="notif-b">${ptBody(n.body)}</div>
+        ${_notifExtra(n)}
         <div class="notif-d">${fmtNotifDate(n.raw.createdAt)}</div></div>
       <div class="notif-go">›</div>
     </div>
     <div class="notif-del" onclick="event.stopPropagation();deleteNotif(${i})" title="Supprimer" style="padding:6px;cursor:pointer;color:var(--text3);align-self:center">🗑</div>
   </div>`).join('');
+}
+// 🚚 Animation "livraison en cours" dans les notifications de commande
+function _notifExtra(n){
+  var t=(n.title||'').toLowerCase();
+  var isShipping=(n.icon==='🚚')||/livraison en cours|en cours de livraison/.test(t);
+  if(isShipping){
+    return '<div style="margin:7px 0 2px;position:relative;height:20px">'
+      +'<div style="position:absolute;left:0;right:0;top:9px;height:4px;border-radius:2px;background:linear-gradient(90deg,#00c853,#00b0ff,#00c853);background-size:200% 100%;animation:ordFlow 1.2s linear infinite"></div>'
+      +'<div style="position:absolute;top:-1px;font-size:16px;animation:notifTruck 2.4s ease-in-out infinite">🚚</div>'
+      +'</div>';
+  }
+  var isDelivered=(n.icon==='📦')||(/command/.test(t)&&/livr[ée]/.test(t));
+  if(isDelivered){
+    return '<div style="margin:6px 0 2px;display:inline-flex;align-items:center;gap:6px;background:rgba(0,200,83,.14);border:1px solid #00c853;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:#00c853">✅ Livrée</div>';
+  }
+  return '';
 }
 // 👆 Clic sur une notification → ouvre DIRECTEMENT la bonne section
 function openNotifIdx(i){
