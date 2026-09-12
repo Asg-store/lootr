@@ -118,6 +118,44 @@ module.exports = async (req, res) => {
     // Mode "email seul" : pas de push, on répond tout de suite.
     if (payload.emailOnly) return res.status(200).json({ ok: true, emailSent: emailSent });
 
+    // ── 🚚 SÉQUENCE DE LIVRAISON (paiement direct) ──────────────────
+    //    4 notifications espacées (Payée → Préparation → Livraison → Livrée),
+    //    envoyées ENTIÈREMENT côté serveur → elles arrivent dans la barre du
+    //    téléphone même si le client ferme l'app juste après le paiement.
+    if (payload.mode === 'deliverySeq' && userId) {
+      const snapT = await db.collection('fcmTokens').where('userId', '==', userId).get();
+      let toks = [];
+      snapT.forEach(d => { const t = (d.data() && d.data().token) || d.id; if (t) toks.push(t); });
+      toks = Array.from(new Set(toks));
+      if (!toks.length) return res.status(200).json({ ok: true, sent: 0, note: 'aucun appareil' });
+      const _h = (req.headers['x-forwarded-host'] || req.headers.host || 'mgloot.com').split(',')[0].trim();
+      const _o = 'https://' + _h.replace(/^https?:\/\//, '');
+      const _open = _o + '/?open=order', _icon = _o + '/notif-logo.png', _badge = _o + '/notif-badge.png';
+      const art = payload.article ? (' · ' + String(payload.article).slice(0, 60)) : '';
+      const steps = [
+        ['✅ Payée', 'Votre paiement' + (art || ' de commande') + ' a bien été reçu.'],
+        ['📦 Préparation', 'Votre commande' + art + ' est en cours de préparation.'],
+        ['🚚 Livraison en cours', 'Votre commande' + art + ' est en cours de livraison…'],
+        ['🎉 Livrée', 'Votre commande' + art + ' a été livrée. Merci pour votre achat !']
+      ];
+      const sendOne = async (t, b) => {
+        const msg = {
+          data: { title: t, body: b, url: _open, type: 'order', icon: _icon },
+          android: { priority: 'high' },
+          webpush: { headers: { Urgency: 'high', TTL: '86400' }, notification: { title: t, body: b, icon: _icon, badge: _badge, requireInteraction: true, data: { type: 'order', url: _open } }, fcmOptions: { link: _open } }
+        };
+        for (let i = 0; i < toks.length; i += 500) {
+          await admin.messaging().sendEachForMulticast(Object.assign({}, msg, { tokens: toks.slice(i, i + 500) }));
+        }
+      };
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      await sendOne(steps[0][0], steps[0][1]);
+      await sleep(2200); await sendOne(steps[1][0], steps[1][1]);
+      await sleep(2200); await sendOne(steps[2][0], steps[2][1]);
+      await sleep(2200); await sendOne(steps[3][0], steps[3][1]);
+      return res.status(200).json({ ok: true, sent: 4, seq: true });
+    }
+
     // ── Collecte des jetons cibles ──
     let tokens = [];
     if (token) tokens.push(token);
