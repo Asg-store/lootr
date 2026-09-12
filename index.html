@@ -5520,14 +5520,16 @@ async function loadUserPayments(){
   window._invOrders={};
   userOrders.forEach(function(o){
     window._invOrders[o.id]=o;
-    // 🚚 Paiement DIRECT (auto) et pas encore livré → notif « Livraison en cours » automatique
-    // (sans intervention admin). Les paiements manuels (Orange/Wave) attendent la confirmation.
+    // 🚚 Paiement DIRECT (auto) récent et pas livré → notif app + séquence push auto
     try{
       var _manual=/manuel/i.test(o.paymentMethod||'')||!!o.proofUrl;
       var _deliv=(o.status==='delivered'||o.ftStatus==='success');
+      var _ts=(o.createdAt&&o.createdAt.toMillis)?o.createdAt.toMillis():0;
+      var _recent=_ts&&(Date.now()-_ts<30*60*1000); // < 30 min
       if(!_manual && o.status==='paid' && !_deliv){
         var _art=o.productName||((o.items&&o.items[0])?(o.items[0].name||o.items[0].title):'')||'';
         mpWriteBell('autodel-'+o.id,{icon:'🚚',title:'Livraison en cours',body:'Votre commande'+(_art?(' · '+_art):'')+' est en cours de livraison. 🚚',type:'order',link:'order',refId:o.id});
+        if(_recent)fireDeliverySequence(o); // push barre du téléphone (Payée→Préparation→Livraison→Livrée)
       }
     }catch(e){}
   });
@@ -6547,6 +6549,7 @@ function handleAccountPaymentResult(result,account){
   showToast('⏳ Paiement en cours de validation…');
 }
 function showAccountDeliverySuccess(order,account){
+  try{fireDeliverySequence(order);}catch(e){}
   if(accOrderUnsub){accOrderUnsub();accOrderUnsub=null;}
   document.getElementById('adyen-account-dropin').style.display='none';
   const box=document.getElementById('acc-pay-status');box.style.display='block';
@@ -7769,6 +7772,21 @@ function mpShowConfirmed(o){
 
 // Écrit une notification dans la cloche 🔔 de l'utilisateur courant (idempotent).
 //  silent:true → pas de 2e bannière (le push /api/send-push a déjà alerté).
+// 🚚 Séquence de push de livraison (paiement DIRECT uniquement), envoyée côté serveur
+//    → arrive dans la barre du téléphone même app fermée. Une seule fois par commande.
+function fireDeliverySequence(o){
+  if(!o||!o.userId)return;
+  var manual=/manuel/i.test(o.paymentMethod||'')||!!o.proofUrl;
+  if(manual)return; // paiement manuel → attend la confirmation admin
+  try{
+    var done=JSON.parse(localStorage.getItem('delseq-done')||'[]')||[];
+    if(done.indexOf(o.id)>=0)return;
+    done.push(o.id);if(done.length>200)done=done.slice(-200);
+    localStorage.setItem('delseq-done',JSON.stringify(done));
+  }catch(e){}
+  var art=o.productName||((o.items&&o.items[0])?(o.items[0].name||o.items[0].title):'')||'';
+  try{fetch('/api/send-push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'deliverySeq',userId:o.userId,article:art})}).catch(function(){});}catch(e){}
+}
 function mpWriteBell(docId,notif){
   if(!currentUser)return;
   try{
